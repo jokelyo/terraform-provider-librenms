@@ -5,13 +5,17 @@ package provider
 
 import (
 	"context"
-	"net/http"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/jokelyo/go-librenms"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -53,10 +57,11 @@ func (p *librenmsProvider) Schema(ctx context.Context, req provider.SchemaReques
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
-				Optional: false,
+				Optional: true,
 			},
 			"token": schema.StringAttribute{
-				Optional: true,
+				Optional:  true,
+				Sensitive: true,
 			},
 		},
 	}
@@ -64,21 +69,104 @@ func (p *librenmsProvider) Schema(ctx context.Context, req provider.SchemaReques
 
 // Configure prepares a LibreNMS API client for data sources and resources.
 func (p *librenmsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data librenmsProviderModel
+	tflog.Info(ctx, "Configuring LibreNMS client")
 
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	var config librenmsProviderModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	// If practitioner provided a configuration value for any of the
+	// attributes, it must be a known value.
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
+	if config.Host.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("host"),
+			"Unknown LibreNMS API Host",
+			"The provider cannot create the LibreNMS API client as there is an unknown configuration value for the LibreNMS API host. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the LIBRENMS_HOST environment variable.",
+		)
+	}
+
+	if config.Token.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("token"),
+			"Unknown LibreNMS API token",
+			"The provider cannot create the LibreNMS API client as there is an unknown configuration value for the LibreNMS API password. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the LIBRENMS_TOKEN environment variable.",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Default values to environment variables, but override
+	// with Terraform configuration value if set.
+
+	host := os.Getenv("LIBRENMS_HOST")
+	token := os.Getenv("LIBRENMS_TOKEN")
+
+	if !config.Host.IsNull() {
+		host = config.Host.ValueString()
+	}
+
+	if !config.Token.IsNull() {
+		token = config.Token.ValueString()
+	}
+
+	// If any of the expected configurations are missing, return
+	// errors with provider-specific guidance.
+
+	if host == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("host"),
+			"Missing LibreNMS API Host",
+			"The provider cannot create the LibreNMS API client as there is a missing or empty value for the LibreNMS API host. "+
+				"Set the host value in the configuration or use the LIBRENMS_HOST environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if token == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("token"),
+			"Missing LibreNMS API Token",
+			"The provider cannot create the LibreNMS API client as there is a missing or empty value for the LibreNMS API password. "+
+				"Set the password value in the configuration or use the LIBRENMS_TOKEN environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	ctx = tflog.SetField(ctx, "librenms_host", host)
+	ctx = tflog.SetField(ctx, "librenms_token", token)
+	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "librenms_token")
+	tflog.Debug(ctx, "Creating LibreNMS client")
+
+	// Create a new LibreNMS client using the configuration values
+	client, err := librenms.New(host, token)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Create LibreNMS API Client",
+			"An unexpected error occurred when creating the LibreNMS API client. "+
+				"If the error is not clear, please contact the provider developers.\n\n"+
+				"LibreNMS Client Error: "+err.Error(),
+		)
+		return
+	}
+
+	// Make the LibreNMS client available during DataSource and Resource type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
+
+	tflog.Info(ctx, "Configured LibreNMS client", map[string]any{"success": true})
 }
 
 // DataSources defines the data sources implemented in the provider.
