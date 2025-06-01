@@ -36,8 +36,9 @@ const (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource              = &deviceResource{}
-	_ resource.ResourceWithConfigure = &deviceResource{}
+	_ resource.Resource                = &deviceResource{}
+	_ resource.ResourceWithConfigure   = &deviceResource{}
+	_ resource.ResourceWithImportState = &deviceResource{}
 )
 
 // NewDeviceResource is a helper function to simplify the provider implementation.
@@ -731,6 +732,19 @@ func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		)
 		return
 	}
+}
+
+func (r *deviceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	id, err := strconv.ParseInt(req.ID, 10, 32)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Parsing ID for Import",
+			fmt.Sprintf("Expected a numeric ID for import, but got %q: %s", req.ID, err.Error()),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), types.Int32Value(int32(id)))...)
 }
 
 func stateSNMPV1(device librenms.Device) *deviceSNMPV1Model {
