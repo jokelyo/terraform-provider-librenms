@@ -21,5 +21,5 @@ resource "librenms_device" "compute_vm_2" {
 }
 
 output "librenms_device_compute_vm_2" {
-  value = librenms_device.compute_vm_2
+  value = librenms_device.compute_vm_2.hostname
 }

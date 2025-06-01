@@ -5,6 +5,13 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32planmodifier"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -105,6 +112,9 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		Attributes: map[string]schema.Attribute{
 			"id": schema.Int32Attribute{
 				Computed: true,
+				PlanModifiers: []planmodifier.Int32{
+					int32planmodifier.UseStateForUnknown(),
+				},
 			},
 			//"display": schema.StringAttribute{
 			//	Computed:    true,
@@ -128,6 +138,9 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"override_syslocation": schema.BoolAttribute{
 				Computed: true,
 				Optional: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"poller_group": schema.Int32Attribute{
 				Computed:    true,
@@ -135,6 +148,9 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Optional:    true,
 				Validators: []validator.Int32{
 					int32validator.Between(0, 65535),
+				},
+				PlanModifiers: []planmodifier.Int32{
+					int32planmodifier.UseStateForUnknown(),
 				},
 			},
 			"port": schema.Int32Attribute{
@@ -144,6 +160,9 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Validators: []validator.Int32{
 					int32validator.Between(1, 65535),
 				},
+				PlanModifiers: []planmodifier.Int32{
+					int32planmodifier.UseStateForUnknown(),
+				},
 			},
 			"port_association_mode": schema.Int32Attribute{
 				Computed:    true,
@@ -151,6 +170,9 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Optional:    true,
 				Validators: []validator.Int32{
 					int32validator.OneOf(1, 2, 3, 4),
+				},
+				PlanModifiers: []planmodifier.Int32{
+					int32planmodifier.UseStateForUnknown(),
 				},
 			},
 			//"snmp_disable": schema.BoolAttribute{
@@ -164,6 +186,9 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Validators: []validator.String{
 					stringvalidator.OneOf("udp", "tcp", "udp6", "tcp6"),
 				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 
 			"icmp_only": schema.SingleNestedAttribute{
@@ -174,16 +199,25 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 						Computed:    true,
 						Description: "The hardware type of the ICMP-only device.",
 						Optional:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"os": schema.StringAttribute{
 						Computed:    true,
 						Description: "The operating system of the ICMP-only device.",
 						Optional:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"sys_name": schema.StringAttribute{
 						Computed:    true,
 						Description: "The system name of the ICMP-only device.",
 						Optional:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 				},
 			},
@@ -195,6 +229,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					"community": schema.StringAttribute{
 						Description: "The SNMP community string for v1",
 						Required:    true,
+						Sensitive:   true,
 					},
 				},
 			},
@@ -206,6 +241,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					"community": schema.StringAttribute{
 						Description: "The SNMP community string for v2c.",
 						Required:    true,
+						Sensitive:   true,
 					},
 				},
 			},
@@ -648,7 +684,6 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	// Update resource state
-	plan.ID = types.Int32Value(int32(deviceResp.Devices[0].DeviceID))
 	plan.OverrideSysLocation = types.BoolValue(bool(deviceResp.Devices[0].OverrideSysLocation))
 	plan.PollerGroup = types.Int32Value(int32(deviceResp.Devices[0].PollerGroup))
 	plan.Port = types.Int32Value(int32(deviceResp.Devices[0].Port))
