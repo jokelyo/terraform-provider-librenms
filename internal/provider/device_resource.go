@@ -3,6 +3,11 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strconv"
+
+	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
+
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -14,6 +19,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 
 	"github.com/jokelyo/go-librenms"
+)
+
+const (
+	snmpV1  = "v1"
+	snmpV2C = "v2c"
+	snmpV3  = "v3"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -35,111 +46,168 @@ type (
 
 	// deviceResourceModel maps resource schema data to a Go type.
 	deviceResourceModel struct {
-		ID                  string                `tfsdk:"id"`
-		Display             string                `tfsdk:"display"`
-		Hostname            string                `tfsdk:"hostname"`
-		Location            string                `tfsdk:"location"`
-		LocationID          int64                 `tfsdk:"location_id"`
-		OverrideSysLocation bool                  `tfsdk:"override_sysLocation"`
-		PollerGroup         int32                 `tfsdk:"poller_group"`
-		Port                int64                 `tfsdk:"port"`
-		PortAssociationMode string                `tfsdk:"port_association_mode"`
-		Transport           string                `tfsdk:"transport"`
-		SnmpV1V2C           *deviceSNMPV1V2CModel `tfsdk:"snmp_v1v2c"`
-		SnmpV3              *deviceSNMPV3Model    `tfsdk:"snmp_v3"`
-		IcmpOnly            *deviceICMPOnlyModel  `tfsdk:"icmp_only"`
+		ID types.Int32 `tfsdk:"id"`
+		//Display             types.String         `tfsdk:"display"`
+		Hostname types.String `tfsdk:"hostname"`
+		//Location            types.String         `tfsdk:"location"`
+		//LocationID          types.Int32          `tfsdk:"location_id"`
+		OverrideSysLocation types.Bool           `tfsdk:"override_syslocation"`
+		PollerGroup         types.Int32          `tfsdk:"poller_group"`
+		Port                types.Int32          `tfsdk:"port"`
+		PortAssociationMode types.Int32          `tfsdk:"port_association_mode"`
+		Transport           types.String         `tfsdk:"transport"`
+		SnmpV1              *deviceSNMPV1Model   `tfsdk:"snmp_v1"`
+		SnmpV2C             *deviceSNMPV2CModel  `tfsdk:"snmp_v2c"`
+		SnmpV3              *deviceSNMPV3Model   `tfsdk:"snmp_v3"`
+		ICMPOnly            *deviceICMPOnlyModel `tfsdk:"icmp_only"`
 	}
 
-	// deviceSNMPV1V2CModel maps SNMP v1/v2c configuration data to a Go type.
-	deviceSNMPV1V2CModel struct {
-		Community string `tfsdk:"community"`
+	// deviceSNMPV1Model maps SNMP v1 configuration data to a Go type.
+	deviceSNMPV1Model struct {
+		Community types.String `tfsdk:"community"`
+	}
+
+	// deviceSNMPV1V2CModel maps SNMP v2c configuration data to a Go type.
+	deviceSNMPV2CModel struct {
+		Community types.String `tfsdk:"community"`
 	}
 
 	// deviceSNMPV3Model maps SNMP v3 configuration data to a Go type.
 	deviceSNMPV3Model struct {
-		AuthAlgorithm   string `tfsdk:"auth_algorithm"`
-		AuthLevel       string `tfsdk:"auth_level"`
-		AuthName        string `tfsdk:"auth_name"`
-		AuthPass        string `tfsdk:"auth_pass"`
-		CryptoAlgorithm string `tfsdk:"crypto_algorithm"`
-		CryptoPass      string `tfsdk:"crypto_pass"`
+		AuthAlgorithm   types.String `tfsdk:"auth_algorithm"`
+		AuthLevel       types.String `tfsdk:"auth_level"`
+		AuthName        types.String `tfsdk:"auth_name"`
+		AuthPass        types.String `tfsdk:"auth_pass"`
+		CryptoAlgorithm types.String `tfsdk:"crypto_algorithm"`
+		CryptoPass      types.String `tfsdk:"crypto_pass"`
 	}
 
-	// deviceICMPOnlyModel maps ICMP (Ping-only) configuration data to a Go type.
+	// deviceICMPOnlyModel maps ICMP-only configuration data to a Go type.
 	deviceICMPOnlyModel struct {
-		Hardware string `tfsdk:"hardware"`
-		OS       string `tfsdk:"os"`
-		SysName  string `tfsdk:"sys_name"`
+		Hardware types.String `tfsdk:"hardware"`
+		OS       types.String `tfsdk:"os"`
+		SysName  types.String `tfsdk:"sys_name"`
 	}
 )
 
 // Metadata returns the resource type name.
 func (r *deviceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_order"
+	resp.TypeName = req.ProviderTypeName + "_device"
 }
 
 // Schema defines the schema for the resource.
 func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
+			"id": schema.Int32Attribute{
 				Computed: true,
 			},
-			"display": schema.StringAttribute{
-				Description: "A string to display as the name of this device, defaults to hostname.",
-				Optional:    true,
-			},
+			//"display": schema.StringAttribute{
+			//	Computed:    true,
+			//	Description: "A string to display as the name of this device, defaults to hostname.",
+			//	Optional:    true,
+			//},
 			"hostname": schema.StringAttribute{
 				Description: "The device hostname or IP address.",
 				Required:    true,
 			},
-			"location": schema.StringAttribute{
-				Description: "The name of the device's location.",
-				Optional:    true,
-			},
-			"location_id": schema.Int64Attribute{
-				Description: "The ID of the device's location.",
-				Optional:    true,
-			},
-			"override_sysLocation": schema.BoolAttribute{
+			//"location": schema.StringAttribute{
+			//	Computed:    true,
+			//	Description: "The name of the device's location.",
+			//	Optional:    true,
+			//},
+			//"location_id": schema.Int32Attribute{
+			//	Computed:    true,
+			//	Description: "The ID of the device's location.",
+			//	Optional:    true,
+			//},
+			"override_syslocation": schema.BoolAttribute{
+				Computed: true,
 				Optional: true,
 			},
 			"poller_group": schema.Int32Attribute{
+				Computed:    true,
 				Description: "The ID of the poller group to assign this device to. Defaults to 0.",
 				Optional:    true,
-			},
-			"port": schema.Int64Attribute{
-				Description: "The SNMP port to use for this device. Defaults to port defined in config.",
-				Optional:    true,
-			},
-			"port_association_mode": schema.StringAttribute{
-				Description: "The port association mode to use for this device. Defaults to ifIndex.",
-				Optional:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("ifIndex", "ifName", "ifAlias", "ifDescr"),
+				Validators: []validator.Int32{
+					int32validator.Between(0, 65535),
 				},
 			},
+			"port": schema.Int32Attribute{
+				Computed:    true,
+				Description: "The SNMP port to use for this device.",
+				Optional:    true,
+				Validators: []validator.Int32{
+					int32validator.Between(1, 65535),
+				},
+			},
+			"port_association_mode": schema.Int32Attribute{
+				Computed:    true,
+				Description: "The port association mode to use for this device. Default is ifIndex(1).",
+				Optional:    true,
+				Validators: []validator.Int32{
+					int32validator.OneOf(1, 2, 3, 4),
+				},
+			},
+			//"snmp_disable": schema.BoolAttribute{
+			//	Description: "If true, the device will be added as an ICMP-only device.",
+			//	Required:    true,
+			//},
 			"transport": schema.StringAttribute{
-				Description: "The transport protocol to use for SNMP communication. Defaults to transport defined in config.",
+				Computed:    true,
+				Description: "The transport protocol to use for SNMP communication.",
 				Optional:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOf("udp", "tcp", "udp6", "tcp6"),
 				},
 			},
 
-			"snmp_v1v2c": schema.SingleNestedAttribute{
-				Description: "Configuration for SNMP v1/v2c. Mutually exclusive with `snmp_v3` and `icmp` blocks.",
+			"icmp_only": schema.SingleNestedAttribute{
+				Description: "Configuration for ICMP-only devices. Mutually exclusive with other `snmp_` attributes.",
+				Optional:    true,
+				Attributes: map[string]schema.Attribute{
+					"hardware": schema.StringAttribute{
+						Computed:    true,
+						Description: "The hardware type of the ICMP-only device.",
+						Optional:    true,
+					},
+					"os": schema.StringAttribute{
+						Computed:    true,
+						Description: "The operating system of the ICMP-only device.",
+						Optional:    true,
+					},
+					"sys_name": schema.StringAttribute{
+						Computed:    true,
+						Description: "The system name of the ICMP-only device.",
+						Optional:    true,
+					},
+				},
+			},
+
+			"snmp_v1": schema.SingleNestedAttribute{
+				Description: "Configuration for SNMP v1. Mutually exclusive with other `snmp_` attributes.",
 				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"community": schema.StringAttribute{
-						Description: "The SNMP community string for v1/v2c.",
+						Description: "The SNMP community string for v1",
+						Required:    true,
+					},
+				},
+			},
+
+			"snmp_v2c": schema.SingleNestedAttribute{
+				Description: "Configuration for SNMP v2c. Mutually exclusive with other `snmp_` attributes.",
+				Optional:    true,
+				Attributes: map[string]schema.Attribute{
+					"community": schema.StringAttribute{
+						Description: "The SNMP community string for v2c.",
 						Required:    true,
 					},
 				},
 			},
 
 			"snmp_v3": schema.SingleNestedAttribute{
-				Description: "Configuration for SNMPv3. Mutually exclusive with `snmp_v1v2c` and `icmp` blocks.",
+				Description: "Configuration for SNMPv3. Mutually exclusive with other `snmp_` attributes.",
 				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"auth_algorithm": schema.StringAttribute{
@@ -180,35 +248,18 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					},
 				},
 			},
-
-			"icmp_only": schema.SingleNestedAttribute{
-				Description: "Configuration for ICMP (Ping-only). Mutually exclusive with `snmp_v1v2c` and `snmp_v3` blocks.",
-				Optional:    true,
-				Attributes: map[string]schema.Attribute{
-					"hardware": schema.StringAttribute{
-						Description: "The user-defined hardware type.",
-						Optional:    true,
-					},
-					"os": schema.StringAttribute{
-						Description: "The user-defined OS. Defaults to 'ping'.",
-						Optional:    true,
-					},
-					"sys_name": schema.StringAttribute{
-						Description: "The user-defined value for sysName.",
-						Optional:    true,
-					},
-				},
-			},
 		},
 	}
 }
 
+// ConfigValidators defines validation rules for the resource configuration.
 func (r *deviceResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		resourcevalidator.Conflicting(
-			path.MatchRoot("snmp_v1v2c"),
+			path.MatchRoot("icmp_only"),
+			path.MatchRoot("snmp_v1"),
+			path.MatchRoot("snmp_v2c"),
 			path.MatchRoot("snmp_v3"),
-			path.MatchRoot("icmp"),
 		),
 	}
 }
@@ -241,32 +292,71 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	// Generate API request body from plan
-	var items []hashicups.OrderItem
-	for _, item := range plan.Items {
-		items = append(items, hashicups.OrderItem{
-			Coffee: hashicups.Coffee{
-				ID: int(item.Coffee.ID.ValueInt64()),
-			},
-			Quantity: int(item.Quantity.ValueInt64()),
-		})
+	// Create the device using the LibreNMS client.
+	payload := &librenms.DeviceCreateRequest{
+		Hostname: plan.Hostname.ValueString(),
 	}
 
-	// Create the device using the LibreNMS client.
-	device, err := r.client.CreateDevice(librenms.CreateDeviceOptions{
-		Display:             plan.Display,
-		Hostname:            plan.Hostname,
-		Location:            plan.Location,
-		LocationID:          plan.LocationID,
-		OverrideSysLocation: plan.OverrideSysLocation,
-		PollerGroup:         plan.PollerGroup,
-		Port:                plan.Port,
-		PortAssociationMode: plan.PortAssociationMode,
-		Transport:           plan.Transport,
-		SnmpV1V2C:           plan.SnmpV1V2C,
-		SnmpV3:              plan.SnmpV3,
-		IcmpOnly:            plan.IcmpOnly,
-	})
+	// Set optional fields
+	//if !plan.Display.IsNull() {
+	//	payload.Display = plan.Display.ValueString()
+	//}
+	//if !plan.Location.IsNull() {
+	//	payload.Location = plan.Location.ValueString()
+	//}
+	//if !plan.LocationID.IsNull() {
+	//	payload.LocationID = int(plan.LocationID.ValueInt32())
+	//}
+	if !plan.OverrideSysLocation.IsNull() {
+		payload.OverrideSysLocation = plan.OverrideSysLocation.ValueBool()
+	}
+	if !plan.PollerGroup.IsNull() {
+		payload.PollerGroup = int(plan.PollerGroup.ValueInt32())
+	}
+	if !plan.Port.IsNull() {
+		payload.Port = int(plan.Port.ValueInt32())
+	}
+	if !plan.PortAssociationMode.IsNull() {
+		payload.PortAssocMode = int(plan.PortAssociationMode.ValueInt32())
+	}
+	if !plan.Transport.IsNull() {
+		payload.Transport = plan.Transport.ValueString()
+	}
+
+	if plan.ICMPOnly != nil {
+		payload.SNMPDisable = true
+		if !plan.ICMPOnly.Hardware.IsNull() {
+			payload.Hardware = plan.ICMPOnly.Hardware.ValueString()
+		}
+		if !plan.ICMPOnly.OS.IsNull() {
+			payload.OS = plan.ICMPOnly.OS.ValueString()
+		}
+		if !plan.ICMPOnly.SysName.IsNull() {
+			payload.SysName = plan.ICMPOnly.SysName.ValueString()
+		}
+	}
+
+	if plan.SnmpV1 != nil {
+		payload.SNMPVersion = snmpV1
+		payload.SNMPCommunity = plan.SnmpV1.Community.ValueString()
+	}
+
+	if plan.SnmpV2C != nil {
+		payload.SNMPVersion = snmpV2C
+		payload.SNMPCommunity = plan.SnmpV2C.Community.ValueString()
+	}
+
+	if plan.SnmpV3 != nil {
+		payload.SNMPVersion = snmpV3
+		payload.SNMPAuthAlgo = plan.SnmpV3.AuthAlgorithm.ValueString()
+		payload.SNMPAuthLevel = plan.SnmpV3.AuthLevel.ValueString()
+		payload.SNMPAuthName = plan.SnmpV3.AuthName.ValueString()
+		payload.SNMPAuthPass = plan.SnmpV3.AuthPass.ValueString()
+		payload.SNMPCrytoAlgo = plan.SnmpV3.CryptoAlgorithm.ValueString()
+		payload.SNMPCryptoPass = plan.SnmpV3.CryptoPass.ValueString()
+	}
+
+	deviceResp, err := r.client.CreateDevice(payload)
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -276,20 +366,60 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	// Set the ID and other attributes in the state.
-	state := deviceResourceModel{
-		ID:          fmt.Sprintf("%d", device.ID),
-		Display:     device.Display,
-		Hostname:    device.Hostname,
-		Location:    device.Location,
-		LocationID:  device.LocationID,
-		PollerGroup: device.PollerGroup,
-		SnmpV1V2C:   device.SnmpV1V2C,
-		SnmpV3:      device.SnmpV3,
-		IcmpOnly:    device.IcmpOnly,
+	// We need to GET the device to get all the fields, as the create response does not return all of them.
+	deviceResp, err = r.client.GetDevice(payload.Hostname)
+
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Getting Device",
+			fmt.Sprintf("Could not get device: %s", err),
+		)
+		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	if deviceResp == nil {
+		resp.Diagnostics.AddError(
+			"Error Getting Device",
+			"Received nil response when getting device. Please check the LibreNMS API.",
+		)
+		return
+	}
+
+	if len(deviceResp.Devices) != 1 {
+		resp.Diagnostics.AddError(
+			"Unexpected LibreNMS API Response",
+			fmt.Sprintf("Expected one device to be retrieved, got %d devices. Please check the LibreNMS API.", len(deviceResp.Devices)),
+		)
+		return
+	}
+
+	// Map response body to schema and populate Computed attribute values
+	plan.ID = types.Int32Value(int32(deviceResp.Devices[0].DeviceID))
+	plan.OverrideSysLocation = types.BoolValue(bool(deviceResp.Devices[0].OverrideSysLocation))
+	plan.PollerGroup = types.Int32Value(int32(deviceResp.Devices[0].PollerGroup))
+	plan.Port = types.Int32Value(int32(deviceResp.Devices[0].Port))
+	plan.PortAssociationMode = types.Int32Value(int32(deviceResp.Devices[0].PortAssociationMode))
+	plan.Transport = types.StringValue(deviceResp.Devices[0].Transport)
+
+	// Check optionally null fields that may have been updated by SNMP
+	//if deviceResp.Devices[0].Display != nil {
+	//	plan.Display = types.StringValue(*deviceResp.Devices[0].Display)
+	//}
+	//if deviceResp.Devices[0].Location != nil {
+	//	plan.Location = types.StringValue(*deviceResp.Devices[0].Location)
+	//}
+	//if deviceResp.Devices[0].LocationID != nil {
+	//	plan.LocationID = types.Int32Value(int32(*deviceResp.Devices[0].LocationID))
+	//}
+	if plan.ICMPOnly != nil {
+		plan.ICMPOnly.Hardware = types.StringValue(deviceResp.Devices[0].Hardware)
+		plan.ICMPOnly.OS = types.StringValue(deviceResp.Devices[0].OS)
+		plan.ICMPOnly.SysName = types.StringValue(deviceResp.Devices[0].SysName)
+	}
+
+	// Set state to fully populated data
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -297,6 +427,90 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 
 // Read refreshes the Terraform state with the latest data.
 func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Get current state
+	var state deviceResourceModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get refreshed order value from LibreNMS API
+	deviceResp, err := r.client.GetDevice(strconv.Itoa(int(state.ID.ValueInt32())))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Device",
+			fmt.Sprintf("Could not read LibreNMS device ID %d: %s", state.ID.ValueInt32(), err.Error()),
+		)
+		return
+	}
+
+	if deviceResp == nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Device",
+			"Received nil response when creating device. Please check the LibreNMS API.",
+		)
+		return
+	}
+
+	if len(deviceResp.Devices) != 1 {
+		resp.Diagnostics.AddError(
+			"Unexpected Device Get Response",
+			fmt.Sprintf("Expected one device to be retrieved, got %d devices. Please check the LibreNMS API.", len(deviceResp.Devices)),
+		)
+		return
+	}
+
+	// Overwrite items with refreshed state
+	state.Hostname = types.StringValue(deviceResp.Devices[0].Hostname)
+	state.OverrideSysLocation = types.BoolValue(bool(deviceResp.Devices[0].OverrideSysLocation))
+	state.PollerGroup = types.Int32Value(int32(deviceResp.Devices[0].PollerGroup))
+	state.Port = types.Int32Value(int32(deviceResp.Devices[0].Port))
+	state.PortAssociationMode = types.Int32Value(int32(deviceResp.Devices[0].PortAssociationMode))
+	state.Transport = types.StringValue(deviceResp.Devices[0].Transport)
+
+	// possibly null fields
+	//state.Display = types.StringNull()
+	//if deviceResp.Devices[0].Display != nil {
+	//	state.Display = types.StringValue(*deviceResp.Devices[0].Display)
+	//}
+	//
+	//state.Location = types.StringNull()
+	//if deviceResp.Devices[0].Location != nil {
+	//	state.Display = types.StringValue(*deviceResp.Devices[0].Location)
+	//}
+	//
+	//state.LocationID = types.Int32Null()
+	//if deviceResp.Devices[0].LocationID != nil {
+	//	state.LocationID = types.Int32Value(int32(*deviceResp.Devices[0].LocationID))
+	//}
+
+	state.ICMPOnly = nil
+	state.SnmpV1 = nil
+	state.SnmpV2C = nil
+	state.SnmpV3 = nil
+	if deviceResp.Devices[0].SNMPDisable {
+		state.ICMPOnly = &deviceICMPOnlyModel{
+			Hardware: types.StringValue(deviceResp.Devices[0].Hardware),
+			OS:       types.StringValue(deviceResp.Devices[0].OS),
+			SysName:  types.StringValue(deviceResp.Devices[0].SysName),
+		}
+	} else {
+		if deviceResp.Devices[0].SNMPVersion == snmpV1 {
+			state.SnmpV1 = stateSNMPV1(deviceResp.Devices[0])
+		} else if deviceResp.Devices[0].SNMPVersion == snmpV2C {
+			state.SnmpV2C = stateSNMPV2C(deviceResp.Devices[0])
+		} else if deviceResp.Devices[0].SNMPVersion == snmpV3 {
+			state.SnmpV3 = stateSNMPV3(deviceResp.Devices[0])
+		}
+	}
+
+	// Set refreshed state
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
@@ -305,4 +519,55 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+}
+
+func stateSNMPV1(device librenms.Device) *deviceSNMPV1Model {
+	ret := &deviceSNMPV1Model{
+		Community: types.StringNull(),
+	}
+	if device.Community != nil {
+		ret.Community = types.StringValue(*device.Community)
+	}
+	return ret
+}
+
+func stateSNMPV2C(device librenms.Device) *deviceSNMPV2CModel {
+	ret := &deviceSNMPV2CModel{
+		Community: types.StringNull(),
+	}
+	if device.Community != nil {
+		ret.Community = types.StringValue(*device.Community)
+	}
+	return ret
+}
+
+func stateSNMPV3(device librenms.Device) *deviceSNMPV3Model {
+	ret := &deviceSNMPV3Model{
+		AuthAlgorithm:   types.StringNull(),
+		AuthLevel:       types.StringNull(),
+		AuthName:        types.StringNull(),
+		AuthPass:        types.StringNull(),
+		CryptoAlgorithm: types.StringNull(),
+		CryptoPass:      types.StringNull(),
+	}
+
+	if device.AuthAlgorithm != nil {
+		ret.AuthAlgorithm = types.StringValue(*device.AuthAlgorithm)
+	}
+	if device.AuthLevel != nil {
+		ret.AuthLevel = types.StringValue(*device.AuthLevel)
+	}
+	if device.AuthName != nil {
+		ret.AuthName = types.StringValue(*device.AuthName)
+	}
+	if device.AuthPass != nil {
+		ret.AuthPass = types.StringValue(*device.AuthPass)
+	}
+	if device.CryptoAlgorithm != nil {
+		ret.CryptoAlgorithm = types.StringValue(*device.CryptoAlgorithm)
+	}
+	if device.CryptoPass != nil {
+		ret.CryptoPass = types.StringValue(*device.CryptoPass)
+	}
+	return ret
 }
