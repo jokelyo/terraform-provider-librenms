@@ -519,6 +519,163 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Retrieve values from plan
+	var plan deviceResourceModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var state deviceResourceModel
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	payload := new(librenms.DeviceUpdateRequest)
+
+	// Build a payload of fields that have changed; LibreNMS API only supports partial updates.
+	if !plan.OverrideSysLocation.IsUnknown() && !plan.OverrideSysLocation.Equal(state.OverrideSysLocation) {
+		payload.Field = append(payload.Field, "override_sysLocation")
+		payload.Data = append(payload.Data, librenms.Bool(plan.OverrideSysLocation.ValueBool()))
+	}
+	if !plan.PollerGroup.IsUnknown() && !plan.PollerGroup.Equal(state.PollerGroup) {
+		payload.Field = append(payload.Field, "poller_group")
+		payload.Data = append(payload.Data, int(plan.PollerGroup.ValueInt32()))
+	}
+	if !plan.Port.IsUnknown() && !plan.Port.Equal(state.Port) {
+		payload.Field = append(payload.Field, "port")
+		payload.Data = append(payload.Data, int(plan.Port.ValueInt32()))
+	}
+	if !plan.PortAssociationMode.IsUnknown() && !plan.PortAssociationMode.Equal(state.PortAssociationMode) {
+		payload.Field = append(payload.Field, "port_association_mode")
+		payload.Data = append(payload.Data, int(plan.PortAssociationMode.ValueInt32()))
+	}
+	if !plan.Transport.IsUnknown() && !plan.Transport.Equal(state.Transport) {
+		payload.Field = append(payload.Field, "transport")
+		payload.Data = append(payload.Data, plan.Transport.ValueString())
+	}
+
+	if plan.ICMPOnly != nil && state.ICMPOnly == nil {
+		payload.Field = append(payload.Field, "snmp_disable")
+		payload.Data = append(payload.Data, librenms.Bool(true))
+		if !plan.ICMPOnly.Hardware.IsNull() {
+			payload.Field = append(payload.Field, "hardware")
+			payload.Data = append(payload.Data, plan.ICMPOnly.Hardware.ValueString())
+		}
+		if !plan.ICMPOnly.OS.IsNull() {
+			payload.Field = append(payload.Field, "os")
+			payload.Data = append(payload.Data, plan.ICMPOnly.OS.ValueString())
+		}
+		if !plan.ICMPOnly.SysName.IsNull() {
+			payload.Field = append(payload.Field, "sys_name")
+			payload.Data = append(payload.Data, plan.ICMPOnly.SysName.ValueString())
+		}
+	} else if plan.ICMPOnly == nil && state.ICMPOnly != nil {
+		payload.Field = append(payload.Field, "snmp_disable")
+		payload.Data = append(payload.Data, librenms.Bool(false))
+	}
+
+	if plan.SnmpV1 != nil && state.SnmpV1 == nil {
+		payload.Field = append(payload.Field, "snmpver")
+		payload.Data = append(payload.Data, snmpV1)
+		payload.Field = append(payload.Field, "community")
+		payload.Data = append(payload.Data, plan.SnmpV1.Community.ValueString())
+	}
+
+	if plan.SnmpV2C != nil && state.SnmpV2C == nil {
+		payload.Field = append(payload.Field, "snmpver")
+		payload.Data = append(payload.Data, snmpV2C)
+		payload.Field = append(payload.Field, "community")
+		payload.Data = append(payload.Data, plan.SnmpV2C.Community.ValueString())
+	}
+
+	if plan.SnmpV3 != nil && state.SnmpV3 == nil {
+		payload.Field = append(payload.Field, "snmpver")
+		payload.Data = append(payload.Data, snmpV3)
+		payload.Field = append(payload.Field, "authalgo")
+		payload.Data = append(payload.Data, plan.SnmpV3.AuthAlgorithm.ValueString())
+		payload.Field = append(payload.Field, "authlevel")
+		payload.Data = append(payload.Data, plan.SnmpV3.AuthLevel.ValueString())
+		payload.Field = append(payload.Field, "authname")
+		payload.Data = append(payload.Data, plan.SnmpV3.AuthName.ValueString())
+		payload.Field = append(payload.Field, "authpass")
+		payload.Data = append(payload.Data, plan.SnmpV3.AuthPass.ValueString())
+		payload.Field = append(payload.Field, "cryptoalgo")
+		payload.Data = append(payload.Data, plan.SnmpV3.CryptoAlgorithm.ValueString())
+		payload.Field = append(payload.Field, "cryptopass")
+		payload.Data = append(payload.Data, plan.SnmpV3.CryptoPass.ValueString())
+	}
+
+	// If no relevant fields have changed, treat it as a no-op update.
+	if len(payload.Field) > 0 {
+		_, err := r.client.UpdateDevice(plan.Hostname.ValueString(), payload)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Updating LibreNMS Device",
+				"Could not update device, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
+
+	// Get updated device record from LibreNMS API
+	deviceResp, err := r.client.GetDevice(plan.Hostname.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Device",
+			fmt.Sprintf("Could not read LibreNMS device ID %d: %s", state.ID.ValueInt32(), err.Error()),
+		)
+		return
+	}
+
+	if deviceResp == nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Device",
+			"Received nil response when creating device. Please check the LibreNMS API.",
+		)
+		return
+	}
+
+	if len(deviceResp.Devices) != 1 {
+		resp.Diagnostics.AddError(
+			"Unexpected Device Get Response",
+			fmt.Sprintf("Expected one device to be retrieved, got %d devices. Please check the LibreNMS API.", len(deviceResp.Devices)),
+		)
+		return
+	}
+
+	// Update resource state
+	plan.ID = types.Int32Value(int32(deviceResp.Devices[0].DeviceID))
+	plan.OverrideSysLocation = types.BoolValue(bool(deviceResp.Devices[0].OverrideSysLocation))
+	plan.PollerGroup = types.Int32Value(int32(deviceResp.Devices[0].PollerGroup))
+	plan.Port = types.Int32Value(int32(deviceResp.Devices[0].Port))
+	plan.PortAssociationMode = types.Int32Value(int32(deviceResp.Devices[0].PortAssociationMode))
+	plan.Transport = types.StringValue(deviceResp.Devices[0].Transport)
+
+	// Check optionally null fields that may have been updated by SNMP
+	//if deviceResp.Devices[0].Display != nil {
+	//	plan.Display = types.StringValue(*deviceResp.Devices[0].Display)
+	//}
+	//if deviceResp.Devices[0].Location != nil {
+	//	plan.Location = types.StringValue(*deviceResp.Devices[0].Location)
+	//}
+	//if deviceResp.Devices[0].LocationID != nil {
+	//	plan.LocationID = types.Int32Value(int32(*deviceResp.Devices[0].LocationID))
+	//}
+	if plan.ICMPOnly != nil {
+		plan.ICMPOnly.Hardware = types.StringValue(deviceResp.Devices[0].Hardware)
+		plan.ICMPOnly.OS = types.StringValue(deviceResp.Devices[0].OS)
+		plan.ICMPOnly.SysName = types.StringValue(deviceResp.Devices[0].SysName)
+	}
+
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
