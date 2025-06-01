@@ -45,6 +45,10 @@ type (
 	}
 
 	// deviceResourceModel maps resource schema data to a Go type.
+	//
+	// Display, Location, and LocationID are commented out because they
+	// are still possibly null after creation, as discovery may not have completed yet,
+	// which causes TF state errors; and there are no reliable defaults for them.
 	deviceResourceModel struct {
 		ID types.Int32 `tfsdk:"id"`
 		//Display             types.String         `tfsdk:"display"`
