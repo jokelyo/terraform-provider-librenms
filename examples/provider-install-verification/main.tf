@@ -1,13 +1,13 @@
 terraform {
   required_providers {
     librenms = {
-      source = "hashicorp.com/edu/librenms"
+      source = "registry.terraform.io/jokelyo/librenms"
     }
   }
 }
 
 provider "librenms" {
-  host = "http://localhost:8000/"
+  host  = "http://localhost:8000/"
   token = "poop"
 }
 

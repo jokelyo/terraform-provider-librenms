@@ -1,3 +1,5 @@
+// Copyright (c) HashiCorp, Inc.
+
 package provider
 
 import (
@@ -112,7 +114,8 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.Int32Attribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The unique numeric identifier of the LibreNMS device.",
 				PlanModifiers: []planmodifier.Int32{
 					int32planmodifier.UseStateForUnknown(),
 				},
@@ -123,7 +126,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			//	Optional:    true,
 			//},
 			"hostname": schema.StringAttribute{
-				Description: "The device hostname or IP address.",
+				Description: "The device hostname or IP address. If hostname, it must have a valid DNS entry.",
 				Required:    true,
 			},
 			//"location": schema.StringAttribute{
@@ -137,15 +140,16 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			//	Optional:    true,
 			//},
 			"override_syslocation": schema.BoolAttribute{
-				Computed: true,
-				Optional: true,
+				Computed:    true,
+				Description: "If true, the device will override the sysLocation value with the one set in LibreNMS.",
+				Optional:    true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"poller_group": schema.Int32Attribute{
 				Computed:    true,
-				Description: "The ID of the poller group to assign this device to. Defaults to 0.",
+				Description: "The ID of the poller group to assign this device to. If not set, the default poller group will be used (typically 0).",
 				Optional:    true,
 				Validators: []validator.Int32{
 					int32validator.Between(0, 65535),
@@ -156,7 +160,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"port": schema.Int32Attribute{
 				Computed:    true,
-				Description: "The SNMP port to use for this device.",
+				Description: "The SNMP port to use for this device. If not set, the default SNMP port defined in your LibreNMS config will be used.",
 				Optional:    true,
 				Validators: []validator.Int32{
 					int32validator.Between(1, 65535),
@@ -166,9 +170,10 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				},
 			},
 			"port_association_mode": schema.Int32Attribute{
-				Computed:    true,
-				Description: "The port association mode to use for this device. Default is ifIndex(1).",
-				Optional:    true,
+				Computed: true,
+				Description: "The int code of the port association mode to use for this device." +
+					" Options are `1 (ifIndex)`, `2 (ifName)`, `3 (ifDesc)`, or `4 (ifAlias)`. If not set, the LibreNMS default is ifIndex `1`.",
+				Optional: true,
 				Validators: []validator.Int32{
 					int32validator.OneOf(1, 2, 3, 4),
 				},
@@ -181,9 +186,10 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			//	Required:    true,
 			//},
 			"transport": schema.StringAttribute{
-				Computed:    true,
-				Description: "The transport protocol to use for SNMP communication.",
-				Optional:    true,
+				Computed: true,
+				Description: "The transport protocol to use for SNMP communication [`udp`, `tcp`, `udp6`, `tcp6`]." +
+					" If not set, the default transport protocol defined in your LibreNMS config will be used.",
+				Optional: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf("udp", "tcp", "udp6", "tcp6"),
 				},
@@ -193,7 +199,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 
 			"icmp_only": schema.SingleNestedAttribute{
-				Description: "Configuration for ICMP-only devices. Mutually exclusive with other `snmp_` attributes.",
+				Description: "Configuration for ICMP-only devices. Disables SNMP polling for the device. Mutually exclusive with other `snmp_` attributes.",
 				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"hardware": schema.StringAttribute{
@@ -224,7 +230,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 
 			"snmp_v1": schema.SingleNestedAttribute{
-				Description: "Configuration for SNMP v1. Mutually exclusive with other `snmp_` attributes.",
+				Description: "Configuration for SNMP v1. Mutually exclusive with other `snmp_` and `icmp_` attributes.",
 				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"community": schema.StringAttribute{
@@ -236,7 +242,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 
 			"snmp_v2c": schema.SingleNestedAttribute{
-				Description: "Configuration for SNMP v2c. Mutually exclusive with other `snmp_` attributes.",
+				Description: "Configuration for SNMP v2c. Mutually exclusive with other `snmp_`  and `icmp_` attributes.",
 				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"community": schema.StringAttribute{
@@ -248,18 +254,18 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 
 			"snmp_v3": schema.SingleNestedAttribute{
-				Description: "Configuration for SNMPv3. Mutually exclusive with other `snmp_` attributes.",
+				Description: "Configuration for SNMPv3. Mutually exclusive with other `snmp_`  and `icmp_` attributes.",
 				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"auth_algorithm": schema.StringAttribute{
-						Description: "The SNMPv3 authentication algorithm.",
+						Description: "The SNMPv3 authentication algorithm [`MD5`, `SHA`, `SHA-224`, `SHA-256`, `SHA-384`, `SHA-512`].",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("MD5", "SHA", "SHA-224", "SHA-256", "SHA-384", "SHA-512"),
 						},
 					},
 					"auth_level": schema.StringAttribute{
-						Description: "The SNMPv3 authentication level.",
+						Description: "The SNMPv3 authentication level [`noAuthNoPriv`, `authNoPriv`, `authPriv`].",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("noAuthNoPriv", "authNoPriv", "authPriv"),
@@ -276,7 +282,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 						Sensitive:   true,
 					},
 					"crypto_algorithm": schema.StringAttribute{
-						Description: "The SNMPv3 encryption algorithm.",
+						Description: "The SNMPv3 encryption algorithm [`DES`, `AES`, `AES-192`, `AES-256`, `AES-256-C`].",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("DES", "AES", "AES-192", "AES-256", "AES-256-C"),

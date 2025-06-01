@@ -57,11 +57,14 @@ func (p *librenmsProvider) Schema(ctx context.Context, req provider.SchemaReques
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
+				Description: "The LibreNMS API base URL, supported format `http[s]://hostname[:port]/`." +
+					" May also be set using the `LIBRENMS_HOST` environment variable.",
 				Optional: true,
 			},
 			"token": schema.StringAttribute{
-				Optional:  true,
-				Sensitive: true,
+				Description: "The LibreNMS API token. May also be set using the `LIBRENMS_TOKEN` environment variable.",
+				Optional:    true,
+				Sensitive:   true,
 			},
 		},
 	}
