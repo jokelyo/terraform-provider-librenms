@@ -715,6 +715,22 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state deviceResourceModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Delete existing order
+	_, err := r.client.DeleteDevice(state.Hostname.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Deleting LibreNMS Device",
+			"Could not delete order, unexpected error: "+err.Error(),
+		)
+		return
+	}
 }
 
 func stateSNMPV1(device librenms.Device) *deviceSNMPV1Model {
