@@ -181,5 +181,6 @@ func (p *librenmsProvider) DataSources(_ context.Context) []func() datasource.Da
 func (p *librenmsProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewDeviceResource,
+		NewDeviceGroupResource,
 	}
 }

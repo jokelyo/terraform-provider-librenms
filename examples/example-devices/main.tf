@@ -25,6 +25,14 @@ resource "librenms_device" "compute_vm_2" {
   }
 }
 
+resource "librenms_devicegroup" "farts" {
+  name = "farts"
+  type = "static"
+  devices = [
+    librenms_device.compute_vm_2.id,
+  ]
+}
+
 output "librenms_device_compute_vm_2" {
   value = librenms_device.compute_vm_2.hostname
 }

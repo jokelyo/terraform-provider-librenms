@@ -1,5 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-
 package provider
 
 import (
@@ -482,7 +480,7 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	// Get refreshed order value from LibreNMS API
+	// Get refreshed value from LibreNMS API
 	deviceResp, err := r.client.GetDevice(strconv.Itoa(int(state.ID.ValueInt32())))
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -729,12 +727,12 @@ func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	// Delete existing order
+	// Delete existing device
 	_, err := r.client.DeleteDevice(state.Hostname.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting LibreNMS Device",
-			"Could not delete order, unexpected error: "+err.Error(),
+			"Could not delete device, unexpected error: "+err.Error(),
 		)
 		return
 	}
