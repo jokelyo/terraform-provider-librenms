@@ -60,9 +60,8 @@ resource "librenms_alertrule" "testrule" {
 				ResourceName:      "librenms_alertrule.testrule",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// The last_updated attribute does not exist in the LibreNMS
-				// API, therefore there is no value for it during import.
-				// ImportStateVerifyIgnore: []string{"last_updated"},
+				// These values are stored in the `extra` field in LibreNMS API after the create operation.
+				ImportStateVerifyIgnore: []string{"delay", "interval", "max_alerts", "mute"},
 			},
 			// Update and Read testing
 			{
