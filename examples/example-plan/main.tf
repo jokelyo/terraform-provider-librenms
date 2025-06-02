@@ -50,7 +50,9 @@ resource "librenms_devicegroup" "dynamic_farts" {
         "operator" : "contains",
         "value" : "cloud"
       }
-    ]
+    ],
+    "joins" : [],
+    "valid" : true
   })
 }
 

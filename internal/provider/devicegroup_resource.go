@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32planmodifier"
@@ -45,12 +47,12 @@ type (
 
 	// deviceGroupModel maps resource schema data to a Go type.
 	deviceGroupModel struct {
-		ID          types.Int32  `tfsdk:"id"`
-		Name        types.String `tfsdk:"name"`
-		Description types.String `tfsdk:"description"`
-		Devices     types.List   `tfsdk:"devices"`
-		Rules       types.String `tfsdk:"rules"`
-		Type        types.String `tfsdk:"type"`
+		ID          types.Int32          `tfsdk:"id"`
+		Name        types.String         `tfsdk:"name"`
+		Description types.String         `tfsdk:"description"`
+		Devices     types.List           `tfsdk:"devices"`
+		Rules       jsontypes.Normalized `tfsdk:"rules"`
+		Type        types.String         `tfsdk:"type"`
 	}
 )
 
@@ -100,7 +102,8 @@ func (r *deviceGroupResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"rules": schema.StringAttribute{
 				Description: "The rules for dynamic device groups, in serialized JSON format. This is only applicable for dynamic device groups." +
 					" Using an encoded string supports the arbitrarily-deep nested structure of the LibreNMS rulesets.",
-				Optional: true,
+				Optional:   true,
+				CustomType: jsontypes.NormalizedType{},
 			},
 		},
 	}
@@ -312,7 +315,7 @@ func (r *deviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 			)
 			return
 		}
-		state.Rules = types.StringValue(rules)
+		state.Rules = jsontypes.NewNormalizedValue(rules)
 	}
 
 	// Set refreshed state

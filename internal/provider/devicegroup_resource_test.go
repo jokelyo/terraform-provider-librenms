@@ -16,7 +16,19 @@ func TestAccDeviceGroupResource(t *testing.T) {
 resource "librenms_devicegroup" "test1" {
   name = "test group"
   type = "dynamic"
-  rules_json = "{\"condition\":\"AND\",\"rules\":[{\"id\":\"access_points.name\",\"field\":\"access_points.name\",\"type\":\"string\",\"input\":\"text\",\"operator\":\"equal\",\"value\":\"accesspoint1\"}],\"valid\":true}"
+  rules = jsonencode({
+    "condition" : "AND",
+    "rules" : [
+      {
+        "id" : "devices.sysDescr",
+        "field" : "devices.sysDescr",
+        "operator" : "contains",
+        "value" : "cloud"
+      }
+    ],
+    "joins": [],
+    "valid" : true
+  })
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -42,7 +54,19 @@ resource "librenms_devicegroup" "test1" {
   name = "test group"
   description = "This is a test group"
   type = "dynamic"
-  rules_json = "{\"condition\":\"AND\",\"rules\":[{\"id\":\"access_points.name\",\"field\":\"access_points.name\",\"type\":\"string\",\"input\":\"text\",\"operator\":\"equal\",\"value\":\"accesspoint1\"}],\"valid\":true}"
+  rules = jsonencode({
+    "condition" : "AND",
+    "rules" : [
+      {
+        "id" : "devices.sysDescr",
+        "field" : "devices.sysDescr",
+        "operator" : "contains",
+        "value" : "cloud"
+      }
+    ],
+    "joins": [],
+    "valid" : true
+  })
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
