@@ -41,7 +41,7 @@ resource "librenms_devicegroup" "dynamic_farts" {
   description = "fartastic"
   type        = "dynamic"
 
-  rules = {
+  rules = jsonencode({
     "condition" : "AND",
     "rules" : [
       {
@@ -51,7 +51,55 @@ resource "librenms_devicegroup" "dynamic_farts" {
         "value" : "cloud"
       }
     ]
-  }
+  })
+}
+
+resource "librenms_alertrule" "cloud_device_down_icmp" {
+  name  = "Cloud Devices Down (ICMP)"
+  notes = "Alert when a device is down and the reason is ICMP"
+
+  # Due to their complicated structure, I would recommend initially configuring the rule in the LibreNMS UI
+  # and then exporting from the API to get the correct JSON format.
+  builder = jsonencode({
+    "condition" : "AND",
+    "rules" : [
+      {
+        "id" : "macros.device_down",
+        "field" : "macros.device_down",
+        "type" : "integer",
+        "input" : "radio",
+        "operator" : "equal",
+        "value" : "1"
+      },
+      {
+        "id" : "devices.status_reason",
+        "field" : "devices.status_reason",
+        "type" : "string",
+        "input" : "text",
+        "operator" : "equal",
+        "value" : "icmp"
+      }
+    ],
+    "valid" : true
+  })
+
+  # you can also just use a serialized JSON string as it's represented in the LibreNMS API output
+  # builder = "{\"condition\": \"AND\",....}"
+
+  delay      = "11m"
+  interval   = "5m"
+  max_alerts = 1
+
+  disabled = false
+  severity = "critical"
+
+  # defaults to all devices if devices is not defined
+  # devices = [1, 2]
+
+  # can also specify group IDs to limit the alert rule to specific device groups
+  groups = [
+    librenms_devicegroup.dynamic_farts.id,
+  ]
 }
 
 output "librenms_device_compute_vm_2" {

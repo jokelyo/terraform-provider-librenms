@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
@@ -45,7 +49,6 @@ type (
 	alertRuleModel struct {
 		ID           types.Int32  `tfsdk:"id"`
 		Builder      types.String `tfsdk:"builder"`
-		Count        types.Int32  `tfsdk:"count"`
 		Delay        types.String `tfsdk:"delay"`
 		Devices      types.List   `tfsdk:"devices"`
 		Disabled     types.Bool   `tfsdk:"disabled"`
@@ -53,6 +56,7 @@ type (
 		Groups       types.List   `tfsdk:"groups"`
 		Interval     types.String `tfsdk:"interval"`
 		Locations    types.List   `tfsdk:"locations"`
+		MaxAlerts    types.Int32  `tfsdk:"max_alerts"` // `count` is a reserved root attribute
 		Mute         types.Bool   `tfsdk:"mute"`
 		Name         types.String `tfsdk:"name"`
 		Notes        types.String `tfsdk:"notes"`
@@ -82,42 +86,43 @@ func (r *alertRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Description: "The alert rule builder field defines the rule logic in serialized JSON format.",
 				Required:    true,
 			},
-			"count": schema.Int32Attribute{
-				Description: "The number of times the alert rule must match before triggering an alert.",
-				Optional:    true,
-				Validators: []validator.Int32{
-					int32validator.AtLeast(0),
-				},
-			},
 			"delay": schema.StringAttribute{
-				Description: "The delay before the alert rule is triggered, in a format like '5m' or '1h'.",
+				Description: "The delay before the alert rule is triggered, in a format like `5m` or `1h`.",
 				Optional:    true,
 			},
 			"devices": schema.ListAttribute{
-				Description: "The list of device IDs attached to the alert rule.",
+				Description: "The list of device IDs attached to the alert rule. If not set, the rule applies to all devices.",
 				Optional:    true,
 				ElementType: types.Int32Type,
 			},
 			"disabled": schema.BoolAttribute{
 				Description: "Whether the alert rule is disabled.",
+				Required:    true,
 			},
 			"extra": schema.StringAttribute{
 				Description: "Extra information stored in serialized JSON format. This is set by LibreNMS.",
 				Computed:    true,
 			},
 			"groups": schema.ListAttribute{
-				Description: "The list of group IDs attached to the alert rule.",
+				Description: "The list of group IDs attached to the alert rule. This can be defined alongside `devices` and `locations`.",
 				Optional:    true,
 				ElementType: types.Int32Type,
 			},
 			"interval": schema.StringAttribute{
-				Description: "The interval at which the alert rule is checked, in a format like '5m' or '1h'.",
+				Description: "The interval at which the alert rule is checked, in a format like `5m` or `1h`.",
 				Optional:    true,
 			},
 			"locations": schema.ListAttribute{
-				Description: "The list of location IDs attached to the alert rule.",
+				Description: "The list of location IDs attached to the alert rule. This can be defined alongside `devices` and `groups`.",
 				Optional:    true,
 				ElementType: types.Int32Type,
+			},
+			"max_alerts": schema.Int32Attribute{
+				Description: "The number of times the alert rule will send an alert.",
+				Optional:    true,
+				Validators: []validator.Int32{
+					int32validator.AtLeast(0),
+				},
 			},
 			"mute": schema.BoolAttribute{
 				Description: "Whether the alert rule is muted. Muted rules do not trigger alerts.",
@@ -142,6 +147,9 @@ func (r *alertRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"severity": schema.StringAttribute{
 				Description: "The severity of the alert rule [`ok`, `warning`, `critical`].",
 				Required:    true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("ok", "warning", "critical"),
+				},
 			},
 		},
 	}
@@ -199,7 +207,7 @@ func (r *alertRuleResource) Create(ctx context.Context, req resource.CreateReque
 	// Create the alert rule using the LibreNMS client.
 	payload := &librenms.AlertRuleCreateRequest{
 		Builder:      plan.Builder.ValueString(),
-		Count:        int(plan.Count.ValueInt32()),
+		Count:        int(plan.MaxAlerts.ValueInt32()),
 		Delay:        plan.Delay.ValueString(),
 		Disabled:     librenms.Bool(plan.Disabled.ValueBool()),
 		Interval:     plan.Interval.ValueString(),
@@ -210,7 +218,10 @@ func (r *alertRuleResource) Create(ctx context.Context, req resource.CreateReque
 		Severity:     plan.Severity.ValueString(),
 
 		Devices: func() []int {
-			ret := make([]int, 0, len(plan.Devices.Elements()))
+			if plan.Devices.IsNull() {
+				return []int{}
+			}
+			ret := make([]int, len(plan.Devices.Elements()))
 			for i, v := range plan.Devices.Elements() {
 				ret[i] = int(v.(types.Int32).ValueInt32())
 			}
@@ -218,7 +229,10 @@ func (r *alertRuleResource) Create(ctx context.Context, req resource.CreateReque
 		}(),
 
 		Groups: func() []int {
-			ret := make([]int, 0, len(plan.Groups.Elements()))
+			if plan.Groups.IsNull() {
+				return []int{}
+			}
+			ret := make([]int, len(plan.Groups.Elements()))
 			for i, v := range plan.Groups.Elements() {
 				ret[i] = int(v.(types.Int32).ValueInt32())
 			}
@@ -226,7 +240,10 @@ func (r *alertRuleResource) Create(ctx context.Context, req resource.CreateReque
 		}(),
 
 		Locations: func() []int {
-			ret := make([]int, 0, len(plan.Locations.Elements()))
+			if plan.Locations.IsNull() {
+				return []int{}
+			}
+			ret := make([]int, len(plan.Locations.Elements()))
 			for i, v := range plan.Locations.Elements() {
 				ret[i] = int(v.(types.Int32).ValueInt32())
 			}
@@ -319,6 +336,84 @@ func (r *alertRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	// Overwrite items with refreshed state
+	alertRule := alertResp.Rules[0]
+	state.ID = types.Int32Value(int32(alertRule.ID))
+	state.Builder = types.StringValue(alertRule.Builder)
+	state.Disabled = types.BoolValue(bool(alertRule.Disabled))
+	state.Extra = types.StringValue(alertRule.Extra)
+	state.Name = types.StringValue(alertRule.Name)
+	state.Query = types.StringValue(alertRule.Query)
+	state.Severity = types.StringValue(alertRule.Severity)
+	state.Devices = types.ListNull(types.Int32Type)
+	state.Groups = types.ListNull(types.Int32Type)
+	state.Locations = types.ListNull(types.Int32Type)
+
+	// count, delay, interval, mute are all stored in extra as serialized JSON.
+	// The delay and interval are represented in seconds, even though their input is in a format like `5m` or `1h`.
+	// I've also seen inconsistent responses from the API where not all fields are returned in extra.
+	//
+	// So, these fields will not be updated in Read(). This will cause apply changes after an initial import, but
+	// it shouldn't cause errors on apply.
+
+	// check possibly null fields
+	state.Notes = types.StringNull()
+	if alertRule.Notes != nil {
+		state.Notes = types.StringValue(*alertRule.Notes)
+	}
+
+	state.ProcedureURL = types.StringNull()
+	if alertRule.ProcedureURL != nil {
+		state.ProcedureURL = types.StringValue(*alertRule.ProcedureURL)
+	}
+
+	// Populate Devices list
+	if len(alertRule.Devices) > 0 {
+		deviceElements := make([]types.Int32, len(alertRule.Devices))
+		for i, deviceID := range alertRule.Devices {
+			deviceElements[i] = types.Int32Value(int32(deviceID))
+		}
+
+		var devicesDiags diag.Diagnostics
+		state.Devices, devicesDiags = types.ListValueFrom(ctx, types.Int32Type, deviceElements)
+		resp.Diagnostics.Append(devicesDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	} else {
+		state.Devices = types.ListNull(types.Int32Type)
+	}
+
+	// Populate Groups list
+	if len(alertRule.Groups) > 0 {
+		groupElements := make([]types.Int32, len(alertRule.Groups))
+		for i, groupID := range alertRule.Groups {
+			groupElements[i] = types.Int32Value(int32(groupID))
+		}
+		var groupsDiags diag.Diagnostics
+		state.Groups, groupsDiags = types.ListValueFrom(ctx, types.Int32Type, groupElements)
+		resp.Diagnostics.Append(groupsDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	} else {
+		state.Groups = types.ListNull(types.Int32Type)
+	}
+
+	// Populate Locations list
+	if len(alertRule.Locations) > 0 {
+		locationElements := make([]types.Int32, len(alertRule.Locations))
+		for i, locationID := range alertRule.Locations {
+			locationElements[i] = types.Int32Value(int32(locationID))
+		}
+		var locationsDiags diag.Diagnostics
+		state.Locations, locationsDiags = types.ListValueFrom(ctx, types.Int32Type, locationElements)
+		resp.Diagnostics.Append(locationsDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	} else {
+		state.Locations = types.ListNull(types.Int32Type)
+	}
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -343,7 +438,7 @@ func (r *alertRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		ID: int(plan.ID.ValueInt32()),
 		AlertRuleCreateRequest: librenms.AlertRuleCreateRequest{
 			Builder:      plan.Builder.ValueString(),
-			Count:        int(plan.Count.ValueInt32()),
+			Count:        int(plan.MaxAlerts.ValueInt32()),
 			Delay:        plan.Delay.ValueString(),
 			Disabled:     librenms.Bool(plan.Disabled.ValueBool()),
 			Interval:     plan.Interval.ValueString(),
@@ -354,7 +449,10 @@ func (r *alertRuleResource) Update(ctx context.Context, req resource.UpdateReque
 			Severity:     plan.Severity.ValueString(),
 
 			Devices: func() []int {
-				ret := make([]int, 0, len(plan.Devices.Elements()))
+				if plan.Devices.IsNull() {
+					return []int{}
+				}
+				ret := make([]int, len(plan.Devices.Elements()))
 				for i, v := range plan.Devices.Elements() {
 					ret[i] = int(v.(types.Int32).ValueInt32())
 				}
@@ -362,7 +460,10 @@ func (r *alertRuleResource) Update(ctx context.Context, req resource.UpdateReque
 			}(),
 
 			Groups: func() []int {
-				ret := make([]int, 0, len(plan.Groups.Elements()))
+				if plan.Groups.IsNull() {
+					return []int{}
+				}
+				ret := make([]int, len(plan.Groups.Elements()))
 				for i, v := range plan.Groups.Elements() {
 					ret[i] = int(v.(types.Int32).ValueInt32())
 				}
@@ -370,7 +471,10 @@ func (r *alertRuleResource) Update(ctx context.Context, req resource.UpdateReque
 			}(),
 
 			Locations: func() []int {
-				ret := make([]int, 0, len(plan.Locations.Elements()))
+				if plan.Locations.IsNull() {
+					return []int{}
+				}
+				ret := make([]int, len(plan.Locations.Elements()))
 				for i, v := range plan.Locations.Elements() {
 					ret[i] = int(v.(types.Int32).ValueInt32())
 				}
