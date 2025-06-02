@@ -56,6 +56,7 @@ resource "librenms_alertrule" "rule1" {
   interval   = "5m"
   max_alerts = 1
 
+  disabled = false
   severity = "critical"
 
   # defaults to all devices if devices is not defined
@@ -74,6 +75,7 @@ resource "librenms_alertrule" "rule1" {
 ### Required
 
 - `builder` (String) The alert rule builder field defines the rule logic in serialized JSON format.
+- `disabled` (Boolean) Whether the alert rule is disabled.
 - `name` (String) The alert rule name.
 - `severity` (String) The severity of the alert rule [`ok`, `warning`, `critical`].
 
@@ -81,7 +83,6 @@ resource "librenms_alertrule" "rule1" {
 
 - `delay` (String) The delay before the alert rule is triggered, in a format like `5m` or `1h`.
 - `devices` (List of Number) The list of device IDs attached to the alert rule. If not set, the rule applies to all devices.
-- `disabled` (Boolean) Whether the alert rule is disabled.
 - `groups` (List of Number) The list of group IDs attached to the alert rule. This can be defined alongside `devices` and `locations`.
 - `interval` (String) The interval at which the alert rule is checked, in a format like `5m` or `1h`.
 - `locations` (List of Number) The list of location IDs attached to the alert rule. This can be defined alongside `devices` and `groups`.

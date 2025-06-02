@@ -1,18 +1,4 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
-
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://developer.hashicorp.com/terraform/plugin/framework-benefits) in the Terraform documentation for additional information._
-
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
-
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
-
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Developer](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
-
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
-
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://developer.hashicorp.com/terraform/registry/providers/publishing) so that others can use it.
+# Terraform Provider LibreNMS
 
 ## Requirements
 
@@ -45,7 +31,31 @@ Then commit the changes to `go.mod` and `go.sum`.
 
 ## Using the provider
 
-Fill this in for each provider
+To use this provider, first, add the `required_providers` block to your Terraform configuration and then define the provider.
+
+```terraform
+terraform {
+  required_providers {
+    librenms = {
+      source  = "registry.terraform.io/jokelyo/librenms"
+      version = ">=0.1.0" # Replace with the desired version
+    }
+  }
+}
+
+provider "librenms" {
+  host = "https://your-librenms-instance/"  # or use LIBRENMS_HOST environment variable
+  token = "your_api_token"                  # or use LIBRENMS_TOKEN environment variable
+}
+
+# Example resource
+# resource "librenms_device" "example" {
+#   # ... resource configuration ...
+# }
+```
+
+See [main.tf](examples/example-plan/main.tf) for a more complete example.
+
 
 ## Developing the Provider
 
@@ -61,4 +71,19 @@ In order to run the full suite of Acceptance tests, run `make testacc`.
 
 ```shell
 make testacc
+```
+
+For local development, create a file named `~/.terraformrc` (or `terraform.rc` on Windows) with the following content, 
+adjusting the path to where your go install command places the binary (typically `$GOPATH/bin` or `$GOBIN`):
+```hcl
+provider_installation {
+  dev_overrides {
+    "registry.terraform.io/jokelyo/librenms" = "/path/to/your/gopath/bin" # Or C:\Users\YourUser\go\bin on Windows
+  }
+
+  # For all other providers, install them directly from their origin provider
+  # registries as normal. If you omit this, Terraform will _only_ use
+  # the dev_overrides block, and so no other providers will be available.
+  direct {}
+}
 ```

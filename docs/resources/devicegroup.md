@@ -29,7 +29,7 @@ resource "librenms_devicegroup" "my_dynamic_group" {
   description = "includes devices with sysDescr containing 'cloud'"
   type        = "dynamic"
 
-  rules = {
+  rules = jsonencode({
     "condition" : "AND",
     "rules" : [
       {
@@ -39,10 +39,7 @@ resource "librenms_devicegroup" "my_dynamic_group" {
         "value" : "cloud"
       }
     ]
-  }
-
-  # complex, nested rulesets can be configured using rules_json.
-  # rules_json = jsonencode({....})
+  })
 }
 ```
 
@@ -58,31 +55,8 @@ resource "librenms_devicegroup" "my_dynamic_group" {
 
 - `description` (String) The device group description.
 - `devices` (List of Number) The list of device IDs in the group. This is only applicable for static device groups.
-- `rules` (Attributes) The rules for dynamic device groups. This is only applicable for dynamic device groups.Use this field for simpler rule definitions. Use `rules_json` for more complex, deeper nested rules. (see [below for nested schema](#nestedatt--rules))
-- `rules_json` (String) The rules for dynamic device groups, in serialized JSON format. This is only applicable for dynamic device groups.Use this field as a workaround if your rules have 2 or more levels of recursion.
+- `rules` (String) The rules for dynamic device groups, in serialized JSON format. This is only applicable for dynamic device groups. Using an encoded string supports the arbitrarily-deep nested structure of the LibreNMS rulesets.
 
 ### Read-Only
 
 - `id` (Number) The unique numeric identifier of the LibreNMS device group.
-
-<a id="nestedatt--rules"></a>
-### Nested Schema for `rules`
-
-Required:
-
-- `condition` (String) The condition to apply to the rules [`AND`, `OR`].
-- `rules` (Attributes List) The list of rules to apply to the device group. Each rule is a nested object with its own attributes. (see [below for nested schema](#nestedatt--rules--rules))
-
-Optional:
-
-- `joins` (List of List of String) The list of joins to apply to the rules. Each join is a list of strings.
-
-<a id="nestedatt--rules--rules"></a>
-### Nested Schema for `rules.rules`
-
-Required:
-
-- `field` (String) The field to match against, e.g. `devices.sysDescr`.
-- `id` (String) The field id to match against, e.g. `devices.sysDescr`. In practice, this seems to be the same value as `field`.
-- `operator` (String) The operator to use for matching, e.g. `equal`, `contains`. Check the LibreNMS UI for a full list.
-- `value` (String) The string value to match against the field.
