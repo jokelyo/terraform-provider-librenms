@@ -34,7 +34,7 @@ resource "librenms_device" "test" {
 				ResourceName:      "librenms_device.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// The last_updated attribute does not exist in the HashiCups
+				// The last_updated attribute does not exist in the LibreNMS
 				// API, therefore there is no value for it during import.
 				// ImportStateVerifyIgnore: []string{"last_updated"},
 			},

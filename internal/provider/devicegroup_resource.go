@@ -273,10 +273,12 @@ func (r *deviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		}
 		payload.Devices = devices
 	} else {
+		// if Type is dynamic, then rules_json or rules must be provided
 		if !plan.RulesJSON.IsNull() {
 			v := plan.RulesJSON.ValueString()
 			payload.Rules = &v
 		} else {
+			// use the existing librenms.DeviceGroupRuleContainer to build the rule and marshal it to JSON
 			rules := librenms.DeviceGroupRuleContainer{
 				Rules:     make([]librenms.DeviceGroupRule, len(plan.Rules.Rules)),
 				Joins:     make([][]string, 0),
@@ -295,6 +297,7 @@ func (r *deviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 				}
 			}
 
+			// joins is a list of lists of strings, so we need to convert it to the appropriate format
 			if !plan.Rules.Joins.IsNull() {
 				for _, join := range plan.Rules.Joins.Elements() {
 					if joinList, ok := join.(types.List); ok {
@@ -306,6 +309,16 @@ func (r *deviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 					}
 				}
 			}
+
+			rulesJSON, err := rules.JSON()
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Error Creating Device Group Payload",
+					fmt.Sprintf("Could not json marshal provided rules: %s", err),
+				)
+				return
+			}
+			payload.Rules = &rulesJSON
 		}
 	}
 
@@ -478,7 +491,7 @@ func (r *deviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 
 	// Delete existing group
-	_, err := r.client.DeleteDevice(strconv.Itoa(int(state.ID.ValueInt32())))
+	_, err := r.client.DeleteDeviceGroup(strconv.Itoa(int(state.ID.ValueInt32())))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting LibreNMS Device Group",
