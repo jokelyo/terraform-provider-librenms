@@ -14,7 +14,7 @@ resource "librenms_devicegroup" "my_dynamic_group" {
   description = "includes devices with sysDescr containing 'cloud'"
   type        = "dynamic"
 
-  rules = {
+  rules = jsonencode({
     "condition" : "AND",
     "rules" : [
       {
@@ -24,8 +24,5 @@ resource "librenms_devicegroup" "my_dynamic_group" {
         "value" : "cloud"
       }
     ]
-  }
-
-  # complex, nested rulesets can be configured using rules_json.
-  # rules_json = jsonencode({....})
+  })
 }

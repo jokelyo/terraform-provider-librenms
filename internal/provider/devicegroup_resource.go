@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32planmodifier"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -43,28 +45,12 @@ type (
 
 	// deviceGroupModel maps resource schema data to a Go type.
 	deviceGroupModel struct {
-		ID          types.Int32            `tfsdk:"id"`
-		Name        types.String           `tfsdk:"name"`
-		Description types.String           `tfsdk:"description"`
-		Devices     types.List             `tfsdk:"devices"`
-		Rules       *deviceGroupRulesModel `tfsdk:"rules"`
-		RulesJSON   types.String           `tfsdk:"rules_json"`
-		Type        types.String           `tfsdk:"type"`
-	}
-
-	// deviceGroupRulesModel represents the top-level container for device group rules.
-	deviceGroupRulesModel struct {
-		Condition types.String           `tfsdk:"condition"`
-		Joins     types.List             `tfsdk:"joins"`
-		Rules     []deviceGroupRuleModel `tfsdk:"rules"`
-	}
-
-	// deviceGroupRuleModel represents a single rule in the device group rules.
-	deviceGroupRuleModel struct {
-		ID       string `tfsdk:"id"`
-		Field    string `tfsdk:"field"`
-		Operator string `tfsdk:"operator"`
-		Value    string `tfsdk:"value"`
+		ID          types.Int32  `tfsdk:"id"`
+		Name        types.String `tfsdk:"name"`
+		Description types.String `tfsdk:"description"`
+		Devices     types.List   `tfsdk:"devices"`
+		Rules       types.String `tfsdk:"rules"`
+		Type        types.String `tfsdk:"type"`
 	}
 )
 
@@ -111,69 +97,10 @@ func (r *deviceGroupResource) Schema(_ context.Context, _ resource.SchemaRequest
 				ElementType: types.Int32Type,
 			},
 
-			"rules_json": schema.StringAttribute{
+			"rules": schema.StringAttribute{
 				Description: "The rules for dynamic device groups, in serialized JSON format. This is only applicable for dynamic device groups." +
-					"Use this field as a workaround if your rules have 2 or more levels of recursion.",
+					" Using an encoded string supports the arbitrarily-deep nested structure of the LibreNMS rulesets.",
 				Optional: true,
-			},
-
-			"rules": schema.SingleNestedAttribute{
-				Description: "The rules for dynamic device groups. This is only applicable for dynamic device groups." +
-					"Use this field for simpler rule definitions. Use `rules_json` for more complex, deeper nested rules.",
-				Optional: true,
-				Attributes: map[string]schema.Attribute{
-					"condition": schema.StringAttribute{
-						Description: "The condition to apply to the rules [`AND`, `OR`].",
-						Required:    true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("AND", "OR"),
-						},
-					},
-					"rules": schema.ListNestedAttribute{
-						Description: "The list of rules to apply to the device group. Each rule is a nested object with its own attributes.",
-						Required:    true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"id": schema.StringAttribute{
-									Description: "The field id to match against, e.g. `devices.sysDescr`. In practice, this seems to be the same value as `field`.",
-									Required:    true,
-								},
-								"field": schema.StringAttribute{
-									Description: "The field to match against, e.g. `devices.sysDescr`.",
-									Required:    true,
-								},
-								// This seems to always be `text`.
-								//"input": schema.StringAttribute{
-								//	Description: "The input of the field.",
-								//},
-								"operator": schema.StringAttribute{
-									Description: "The operator to use for matching, e.g. `equal`, `contains`. Check the LibreNMS UI for a full list.",
-									Required:    true,
-								},
-								// This seems to always be `string`.
-								//"type": schema.StringAttribute{
-								//	Description: "The type of the field, e.g. `string`, `int`, `bool`, etc.",
-								//},
-								"value": schema.StringAttribute{
-									Description: "The string value to match against the field.",
-									Required:    true,
-								},
-							},
-						},
-					},
-					"joins": schema.ListAttribute{
-						Description: "The list of joins to apply to the rules. Each join is a list of strings.",
-						Optional:    true,
-						ElementType: types.ListType{
-							ElemType: types.StringType,
-						},
-					},
-					// Seems to always be `true`.
-					//"valid": schema.BoolAttribute{
-					//	Description: "Whether the rules are valid. This is set to true if the rules are valid, false otherwise.",
-					//	Required: true,
-					//},
-				},
 			},
 		},
 	}
@@ -185,7 +112,6 @@ func (r *deviceGroupResource) ConfigValidators(ctx context.Context) []resource.C
 		resourcevalidator.Conflicting(
 			path.MatchRoot("devices"),
 			path.MatchRoot("rules"),
-			path.MatchRoot("rules_json"),
 		),
 	}
 }
@@ -200,12 +126,11 @@ func (r *deviceGroupResource) ValidateConfig(ctx context.Context, req resource.V
 
 	// If the device group type is dynamic, ensure that rules are provided.
 	if data.Type.ValueString() == "dynamic" {
-		if data.Rules == nil && data.RulesJSON.IsNull() {
+		if data.Rules.IsNull() || data.Rules.IsUnknown() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("type"),
 				"Missing Dynamic Device Group Rules",
-				"The device group type is set to 'dynamic', but no rules are provided. "+
-					"Please define either `rules` or `rules_json`.",
+				"The device group type is set to 'dynamic', but no rules are provided. Please define the `rules` attribute with an encoded json.",
 			)
 			return
 		}
@@ -273,53 +198,9 @@ func (r *deviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		}
 		payload.Devices = devices
 	} else {
-		// if Type is dynamic, then rules_json or rules must be provided
-		if !plan.RulesJSON.IsNull() {
-			v := plan.RulesJSON.ValueString()
-			payload.Rules = &v
-		} else {
-			// use the existing librenms.DeviceGroupRuleContainer to build the rule and marshal it to JSON
-			rules := librenms.DeviceGroupRuleContainer{
-				Rules:     make([]librenms.DeviceGroupRule, len(plan.Rules.Rules)),
-				Joins:     make([][]string, 0),
-				Condition: plan.Rules.Condition.ValueString(),
-				Valid:     true,
-			}
-
-			for i, rule := range plan.Rules.Rules {
-				rules.Rules[i] = librenms.DeviceGroupRule{
-					ID:       rule.ID,
-					Field:    rule.Field,
-					Input:    "text",   // seems to always be text
-					Type:     "string", // seems to always be string
-					Value:    rule.Value,
-					Operator: rule.Operator,
-				}
-			}
-
-			// joins is a list of lists of strings, so we need to convert it to the appropriate format
-			if !plan.Rules.Joins.IsNull() {
-				for _, join := range plan.Rules.Joins.Elements() {
-					if joinList, ok := join.(types.List); ok {
-						joinStrings := make([]string, len(joinList.Elements()))
-						for j, elem := range joinList.Elements() {
-							joinStrings[j] = elem.(types.String).ValueString()
-						}
-						rules.Joins = append(rules.Joins, joinStrings)
-					}
-				}
-			}
-
-			rulesJSON, err := rules.JSON()
-			if err != nil {
-				resp.Diagnostics.AddError(
-					"Error Creating Device Group Payload",
-					fmt.Sprintf("Could not json marshal provided rules: %s", err),
-				)
-				return
-			}
-			payload.Rules = &rulesJSON
-		}
+		// if Type is dynamic, then rules must be provided.
+		v := plan.Rules.ValueString()
+		payload.Rules = &v
 	}
 
 	deviceGroupResp, err := r.client.CreateDeviceGroup(payload)
@@ -366,7 +247,7 @@ func (r *deviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	if groupResp == nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Device Groups",
-			"Received nil response when creating device group. Please check the LibreNMS API.",
+			"Received nil response when reading device group. Please check the LibreNMS API.",
 		)
 		return
 	}
@@ -380,6 +261,59 @@ func (r *deviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	// Overwrite items with refreshed state
+	group := groupResp.Groups[0]
+	state.ID = types.Int32Value(int32(group.ID))
+	state.Name = types.StringValue(group.Name)
+	state.Type = types.StringValue(group.Type)
+
+	// possibly null values
+	state.Description = types.StringNull()
+	if group.Description != nil {
+		state.Description = types.StringValue(*group.Description)
+	}
+
+	if group.Type == "static" {
+		// pull group members list from LibreNMS API
+		members, err := r.client.GetDeviceGroupMembers(strconv.Itoa(group.ID))
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Reading Device Group Members",
+				fmt.Sprintf("Could not read members for device group ID %d: %s", state.ID.ValueInt32(), err.Error()),
+			)
+			return
+		}
+
+		if members == nil {
+			resp.Diagnostics.AddError(
+				"Error Reading Device Group Members",
+				"Received nil response when reading members for device group. Please check the LibreNMS API.",
+			)
+			return
+		}
+
+		// update devices list
+		var devices []types.Int32
+		for _, device := range members.Devices {
+			devices = append(devices, types.Int32Value(int32(device.ID)))
+		}
+
+		var devicesDiags diag.Diagnostics
+		state.Devices, devicesDiags = types.ListValueFrom(ctx, types.Int32Type, devices)
+		resp.Diagnostics.Append(devicesDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	} else {
+		rules, err := group.Rules.JSON()
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Serializing Device Group Rules",
+				fmt.Sprintf("Could not serialize rules for device group ID %d: %s", state.ID.ValueInt32(), err.Error()),
+			)
+			return
+		}
+		state.Rules = types.StringValue(rules)
+	}
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -429,40 +363,9 @@ func (r *deviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		}
 		payload.Devices = devices
 	} else {
-		if !plan.RulesJSON.IsNull() {
-			v := plan.RulesJSON.ValueString()
-			payload.Rules = &v
-		} else {
-			rules := librenms.DeviceGroupRuleContainer{
-				Rules:     make([]librenms.DeviceGroupRule, len(plan.Rules.Rules)),
-				Joins:     make([][]string, 0),
-				Condition: plan.Rules.Condition.ValueString(),
-				Valid:     true,
-			}
-
-			for i, rule := range plan.Rules.Rules {
-				rules.Rules[i] = librenms.DeviceGroupRule{
-					ID:       rule.ID,
-					Field:    rule.Field,
-					Input:    "text",   // seems to always be text
-					Type:     "string", // seems to always be string
-					Value:    rule.Value,
-					Operator: rule.Operator,
-				}
-			}
-
-			if !plan.Rules.Joins.IsNull() {
-				for _, join := range plan.Rules.Joins.Elements() {
-					if joinList, ok := join.(types.List); ok {
-						joinStrings := make([]string, len(joinList.Elements()))
-						for j, elem := range joinList.Elements() {
-							joinStrings[j] = elem.(types.String).ValueString()
-						}
-						rules.Joins = append(rules.Joins, joinStrings)
-					}
-				}
-			}
-		}
+		// if Type is dynamic, then rules must be provided.
+		v := plan.Rules.ValueString()
+		payload.Rules = &v
 	}
 
 	_, err := r.client.UpdateDeviceGroup(strconv.Itoa(int(state.ID.ValueInt32())), payload)
