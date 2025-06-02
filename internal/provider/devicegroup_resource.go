@@ -30,7 +30,7 @@ var (
 	_ resource.ResourceWithImportState = &deviceGroupResource{}
 )
 
-// NewDeviceResource is a helper function to simplify the provider implementation.
+// NewDeviceGroupResource is a helper function to simplify the provider implementation.
 func NewDeviceGroupResource() resource.Resource {
 	return &deviceGroupResource{}
 }
