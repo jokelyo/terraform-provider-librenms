@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -47,22 +49,22 @@ type (
 
 	// alertRuleModel maps resource schema data to a Go type.
 	alertRuleModel struct {
-		ID           types.Int32  `tfsdk:"id"`
-		Builder      types.String `tfsdk:"builder"`
-		Delay        types.String `tfsdk:"delay"`
-		Devices      types.List   `tfsdk:"devices"`
-		Disabled     types.Bool   `tfsdk:"disabled"`
-		Extra        types.String `tfsdk:"extra"`
-		Groups       types.List   `tfsdk:"groups"`
-		Interval     types.String `tfsdk:"interval"`
-		Locations    types.List   `tfsdk:"locations"`
-		MaxAlerts    types.Int32  `tfsdk:"max_alerts"` // `count` is a reserved root attribute
-		Mute         types.Bool   `tfsdk:"mute"`
-		Name         types.String `tfsdk:"name"`
-		Notes        types.String `tfsdk:"notes"`
-		ProcedureURL types.String `tfsdk:"procedure_url"`
-		Query        types.String `tfsdk:"query"`
-		Severity     types.String `tfsdk:"severity"`
+		ID           types.Int32          `tfsdk:"id"`
+		Builder      jsontypes.Normalized `tfsdk:"builder"`
+		Delay        types.String         `tfsdk:"delay"`
+		Devices      types.List           `tfsdk:"devices"`
+		Disabled     types.Bool           `tfsdk:"disabled"`
+		Extra        jsontypes.Normalized `tfsdk:"extra"`
+		Groups       types.List           `tfsdk:"groups"`
+		Interval     types.String         `tfsdk:"interval"`
+		Locations    types.List           `tfsdk:"locations"`
+		MaxAlerts    types.Int32          `tfsdk:"max_alerts"` // `count` is a reserved root attribute
+		Mute         types.Bool           `tfsdk:"mute"`
+		Name         types.String         `tfsdk:"name"`
+		Notes        types.String         `tfsdk:"notes"`
+		ProcedureURL types.String         `tfsdk:"procedure_url"`
+		Query        types.String         `tfsdk:"query"`
+		Severity     types.String         `tfsdk:"severity"`
 	}
 )
 
@@ -85,6 +87,7 @@ func (r *alertRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"builder": schema.StringAttribute{
 				Description: "The alert rule builder field defines the rule logic in serialized JSON format.",
 				Required:    true,
+				CustomType:  jsontypes.NormalizedType{},
 			},
 			"delay": schema.StringAttribute{
 				Description: "The delay before the alert rule is triggered, in a format like `5m` or `1h`.",
@@ -102,6 +105,7 @@ func (r *alertRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"extra": schema.StringAttribute{
 				Description: "Extra information stored in serialized JSON format. This is set by LibreNMS.",
 				Computed:    true,
+				CustomType:  jsontypes.NormalizedType{},
 			},
 			"groups": schema.ListAttribute{
 				Description: "The list of group IDs attached to the alert rule. This can be defined alongside `devices` and `locations`.",
@@ -288,7 +292,7 @@ func (r *alertRuleResource) Create(ctx context.Context, req resource.CreateReque
 
 	// Map response body to schema and populate Computed attribute values
 	plan.ID = types.Int32Value(int32(createdRule.ID))
-	plan.Extra = types.StringValue(createdRule.Extra)
+	plan.Extra = jsontypes.NewNormalizedValue(createdRule.Extra)
 	plan.Query = types.StringValue(createdRule.Query)
 
 	// Set state to fully populated data
@@ -338,9 +342,9 @@ func (r *alertRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	// Overwrite items with refreshed state
 	alertRule := alertResp.Rules[0]
 	state.ID = types.Int32Value(int32(alertRule.ID))
-	state.Builder = types.StringValue(alertRule.Builder)
+	state.Builder = jsontypes.NewNormalizedValue(alertRule.Builder)
 	state.Disabled = types.BoolValue(bool(alertRule.Disabled))
-	state.Extra = types.StringValue(alertRule.Extra)
+	state.Extra = jsontypes.NewNormalizedValue(alertRule.Extra)
 	state.Name = types.StringValue(alertRule.Name)
 	state.Query = types.StringValue(alertRule.Query)
 	state.Severity = types.StringValue(alertRule.Severity)
@@ -520,7 +524,7 @@ func (r *alertRuleResource) Update(ctx context.Context, req resource.UpdateReque
 
 	// Map response body to schema and populate updated attribute values
 	alertRule := ruleResp.Rules[0]
-	plan.Extra = types.StringValue(alertRule.Extra)
+	plan.Extra = jsontypes.NewNormalizedValue(alertRule.Extra)
 	plan.Query = types.StringValue(alertRule.Query)
 
 	diags = resp.State.Set(ctx, plan)
