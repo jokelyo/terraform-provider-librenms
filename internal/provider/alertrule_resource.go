@@ -220,39 +220,27 @@ func (r *alertRuleResource) Create(ctx context.Context, req resource.CreateReque
 		Notes:        plan.Notes.ValueString(),
 		ProcedureURL: plan.ProcedureURL.ValueString(),
 		Severity:     plan.Severity.ValueString(),
+		Devices:      make([]int, 0),
+		Groups:       make([]int, 0),
+		Locations:    make([]int, 0),
+	}
 
-		Devices: func() []int {
-			if plan.Devices.IsNull() {
-				return []int{}
-			}
-			ret := make([]int, len(plan.Devices.Elements()))
-			for i, v := range plan.Devices.Elements() {
-				ret[i] = int(v.(types.Int32).ValueInt32())
-			}
-			return ret
-		}(),
+	diags = plan.Devices.ElementsAs(ctx, &payload.Devices, false)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-		Groups: func() []int {
-			if plan.Groups.IsNull() {
-				return []int{}
-			}
-			ret := make([]int, len(plan.Groups.Elements()))
-			for i, v := range plan.Groups.Elements() {
-				ret[i] = int(v.(types.Int32).ValueInt32())
-			}
-			return ret
-		}(),
+	diags = plan.Groups.ElementsAs(ctx, &payload.Groups, false)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-		Locations: func() []int {
-			if plan.Locations.IsNull() {
-				return []int{}
-			}
-			ret := make([]int, len(plan.Locations.Elements()))
-			for i, v := range plan.Locations.Elements() {
-				ret[i] = int(v.(types.Int32).ValueInt32())
-			}
-			return ret
-		}(),
+	diags = plan.Locations.ElementsAs(ctx, &payload.Locations, false)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	_, err := r.client.CreateAlertRule(payload)
@@ -451,40 +439,28 @@ func (r *alertRuleResource) Update(ctx context.Context, req resource.UpdateReque
 			Notes:        plan.Notes.ValueString(),
 			ProcedureURL: plan.ProcedureURL.ValueString(),
 			Severity:     plan.Severity.ValueString(),
-
-			Devices: func() []int {
-				if plan.Devices.IsNull() {
-					return []int{}
-				}
-				ret := make([]int, len(plan.Devices.Elements()))
-				for i, v := range plan.Devices.Elements() {
-					ret[i] = int(v.(types.Int32).ValueInt32())
-				}
-				return ret
-			}(),
-
-			Groups: func() []int {
-				if plan.Groups.IsNull() {
-					return []int{}
-				}
-				ret := make([]int, len(plan.Groups.Elements()))
-				for i, v := range plan.Groups.Elements() {
-					ret[i] = int(v.(types.Int32).ValueInt32())
-				}
-				return ret
-			}(),
-
-			Locations: func() []int {
-				if plan.Locations.IsNull() {
-					return []int{}
-				}
-				ret := make([]int, len(plan.Locations.Elements()))
-				for i, v := range plan.Locations.Elements() {
-					ret[i] = int(v.(types.Int32).ValueInt32())
-				}
-				return ret
-			}(),
+			Devices:      make([]int, 0),
+			Groups:       make([]int, 0),
+			Locations:    make([]int, 0),
 		},
+	}
+
+	diags = plan.Devices.ElementsAs(ctx, &payload.Devices, false)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	diags = plan.Groups.ElementsAs(ctx, &payload.Groups, false)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	diags = plan.Locations.ElementsAs(ctx, &payload.Locations, false)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	_, err := r.client.UpdateAlertRule(payload)

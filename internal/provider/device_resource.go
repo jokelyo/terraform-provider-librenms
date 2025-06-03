@@ -401,9 +401,7 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		payload.SNMPCryptoPass = plan.SnmpV3.CryptoPass.ValueString()
 	}
 
-	deviceResp, err := r.client.CreateDevice(payload)
-
-	if err != nil {
+	if _, err := r.client.CreateDevice(payload); err != nil {
 		resp.Diagnostics.AddError(
 			"Error Creating Device",
 			fmt.Sprintf("Could not create device: %s", err),
@@ -412,7 +410,7 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	// We need to GET the device to get all the fields, as the create response does not return all of them.
-	deviceResp, err = r.client.GetDevice(payload.Hostname)
+	deviceResp, err := r.client.GetDevice(payload.Hostname)
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -541,11 +539,12 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 			SysName:  types.StringValue(deviceResp.Devices[0].SysName),
 		}
 	} else {
-		if deviceResp.Devices[0].SNMPVersion == snmpV1 {
+		switch deviceResp.Devices[0].SNMPVersion {
+		case snmpV1:
 			state.SnmpV1 = stateSNMPV1(deviceResp.Devices[0])
-		} else if deviceResp.Devices[0].SNMPVersion == snmpV2C {
+		case snmpV2C:
 			state.SnmpV2C = stateSNMPV2C(deviceResp.Devices[0])
-		} else if deviceResp.Devices[0].SNMPVersion == snmpV3 {
+		case snmpV3:
 			state.SnmpV3 = stateSNMPV3(deviceResp.Devices[0])
 		}
 	}

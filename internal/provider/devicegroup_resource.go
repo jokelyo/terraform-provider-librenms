@@ -195,11 +195,12 @@ func (r *deviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	if payload.Type == "static" {
-		var devices []int
-		for _, v := range plan.Devices.Elements() {
-			devices = append(devices, int(v.(types.Int32).ValueInt32()))
+		payload.Devices = make([]int, 0)
+		diags = plan.Devices.ElementsAs(ctx, &payload.Devices, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
 		}
-		payload.Devices = devices
 	} else {
 		// if Type is dynamic, then rules must be provided.
 		v := plan.Rules.ValueString()
@@ -360,11 +361,12 @@ func (r *deviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	if payload.Type == "static" {
-		var devices []int
-		for _, v := range plan.Devices.Elements() {
-			devices = append(devices, int(v.(types.Int32).ValueInt32()))
+		payload.Devices = make([]int, 0)
+		diags = plan.Devices.ElementsAs(ctx, &payload.Devices, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
 		}
-		payload.Devices = devices
 	} else {
 		// if Type is dynamic, then rules must be provided.
 		v := plan.Rules.ValueString()
