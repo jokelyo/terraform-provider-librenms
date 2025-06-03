@@ -56,7 +56,6 @@ provider "librenms" {
 
 See [main.tf](examples/example-plan/main.tf) for a more complete example.
 
-
 ## Developing the Provider
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
@@ -87,3 +86,8 @@ provider_installation {
   direct {}
 }
 ```
+
+## Development Environment
+
+For information about the development Docker stack and available make commands for local development and testing, 
+please see the [development/README.md](development/README.md) file.
