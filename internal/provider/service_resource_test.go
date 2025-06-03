@@ -21,7 +21,7 @@ resource "librenms_device" "test" {
 }
 
 resource "librenms_service" "test" {
-  device_id = 2
+  device_id = librenms_device.test.id
   name = "service test"
 
   ignore = false
@@ -49,8 +49,15 @@ resource "librenms_service" "test" {
 			// Update and Read testing
 			{
 				Config: providerConfig + `
+resource "librenms_device" "test" {
+  hostname = "1.1.1.1"
+  port     = 161
+  icmp_only = {}
+  force_add = true
+}
+
 resource "librenms_service" "test" {
-  device_id = 2
+  device_id = librenms_device.test.id
   name = "service test"
 
   ignore = false
