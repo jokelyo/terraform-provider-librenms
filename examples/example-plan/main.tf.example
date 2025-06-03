@@ -19,7 +19,8 @@ provider "librenms" {
 
 # update hostname to a reachable host
 resource "librenms_device" "compute_vm_2" {
-  hostname = "192.168.5.5"
+  hostname  = "192.168.5.5"
+  force_add = true
 
   snmp_v2c = {
     community = "5581eb63764a093c"

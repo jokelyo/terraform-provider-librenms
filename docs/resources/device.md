@@ -33,9 +33,7 @@ resource "librenms_device" "my_server" {
 
 ### Optional
 
-> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
-
-- `force_add` (Boolean, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) If true, the SNMP/ICMP checks will be skipped, and the device will be added immediately.
+- `force_add` (Boolean) If true, the SNMP/ICMP checks will be skipped, and the device will be added immediately.
 - `icmp_only` (Attributes) Configuration for ICMP-only devices. Disables SNMP polling for the device. Mutually exclusive with other `snmp_` attributes. (see [below for nested schema](#nestedatt--icmp_only))
 - `override_syslocation` (Boolean) If true, the device will override the sysLocation value with the one set in LibreNMS.
 - `poller_group` (Number) The ID of the poller group to assign this device to. If not set, the default poller group will be used (typically 0).
