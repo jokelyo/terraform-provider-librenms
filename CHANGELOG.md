@@ -1,3 +1,5 @@
-## 0.1.0
+## 0.1.1
+ * Documentation updates.
 
-Initial release.
+## 0.1.0
+ * Initial release.
