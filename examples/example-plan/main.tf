@@ -25,6 +25,19 @@ resource "librenms_device" "compute_vm_2" {
   }
 }
 
+# create a service that checks http on the device
+resource "librenms_service" "compute_vm_2_http" {
+  device_id   = librenms_device.compute_vm_2.id
+  name        = "HTTP3"
+  type        = "http"
+  description = "toots"
+
+  ignore     = false
+  parameters = "-C 30,14"
+  target     = "192.168.1.1"
+
+}
+
 # create a static device group with a single device using the computed resource id
 resource "librenms_devicegroup" "farts" {
   name        = "farts"

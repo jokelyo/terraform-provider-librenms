@@ -14,7 +14,7 @@ func TestAccAlertRuleGroupResource(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "librenms_alertrule" "testrule" {
-  name  = "Cloud Devices Down (ICMP)"
+  name  = "Test Rule (ICMP)"
   notes = "Alert when a device is down and the reason is ICMP"
 
   builder = jsonencode({
@@ -49,7 +49,7 @@ resource "librenms_alertrule" "testrule" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("librenms_alertrule.testrule", "name", "Cloud Devices Down (ICMP)"),
+					resource.TestCheckResourceAttr("librenms_alertrule.testrule", "name", "Test Rule (ICMP)"),
 					resource.TestCheckResourceAttr("librenms_alertrule.testrule", "severity", "critical"),
 					// Verify dynamic values have any value set in the state.
 					resource.TestCheckResourceAttrSet("librenms_alertrule.testrule", "id"),
@@ -67,7 +67,7 @@ resource "librenms_alertrule" "testrule" {
 			{
 				Config: providerConfig + `
 resource "librenms_alertrule" "testrule" {
-  name  = "Cloud Devices Down (ICMP)"
+  name  = "Test Rule (ICMP)"
   notes = "Alert when a device is down and the reason is ICMP"
 
   builder = jsonencode({

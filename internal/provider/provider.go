@@ -183,5 +183,6 @@ func (p *librenmsProvider) Resources(_ context.Context) []func() resource.Resour
 		NewDeviceResource,
 		NewDeviceGroupResource,
 		NewAlertRuleResource,
+		NewServiceResource,
 	}
 }
