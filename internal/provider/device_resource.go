@@ -60,9 +60,10 @@ type (
 	deviceResourceModel struct {
 		ID types.Int32 `tfsdk:"id"`
 		//Display             types.String         `tfsdk:"display"`
-		Hostname types.String `tfsdk:"hostname"`
 		//Location            types.String         `tfsdk:"location"`
 		//LocationID          types.Int32          `tfsdk:"location_id"`
+		ForceAdd            types.Bool           `tfsdk:"force_add"`
+		Hostname            types.String         `tfsdk:"hostname"`
 		OverrideSysLocation types.Bool           `tfsdk:"override_syslocation"`
 		PollerGroup         types.Int32          `tfsdk:"poller_group"`
 		Port                types.Int32          `tfsdk:"port"`
@@ -137,6 +138,11 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			//	Description: "The ID of the device's location.",
 			//	Optional:    true,
 			//},
+			"force_add": schema.BoolAttribute{
+				Optional:    true,
+				WriteOnly:   true,
+				Description: "If true, the SNMP/ICMP checks will be skipped, and the device will be added immediately.",
+			},
 			"override_syslocation": schema.BoolAttribute{
 				Computed:    true,
 				Description: "If true, the device will override the sysLocation value with the one set in LibreNMS.",
@@ -306,6 +312,25 @@ func (r *deviceResource) ConfigValidators(ctx context.Context) []resource.Config
 			path.MatchRoot("snmp_v2c"),
 			path.MatchRoot("snmp_v3"),
 		),
+	}
+}
+
+// ValidateConfig validates the resource configuration.
+func (r *deviceResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data deviceResourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// if forceAdd is true, then warn the user that ICMP/SNNP checks will be skipped on the host
+	if data.ForceAdd.ValueBool() {
+		resp.Diagnostics.AddWarning(
+			"Force Add Warning",
+			"Force add is set to true, which means the device will be added without SNMP/ICMP checks. "+
+				"This may lead to incomplete device information in LibreNMS. Use with caution.",
+		)
 	}
 }
 

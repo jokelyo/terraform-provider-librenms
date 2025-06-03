@@ -48,6 +48,7 @@ dev-start: .env
 dev-stop:
 	$(COMPOSE) down
 
+# This target is meant to be used in a CI/CD pipeline as a single-use admin/api token setup.
 dev-testacc: dev-start
 	sleep 20
 	$(COMPOSE) exec librenms lnms user:add -r admin -p admin admin

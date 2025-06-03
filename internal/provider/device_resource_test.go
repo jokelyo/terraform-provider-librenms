@@ -17,6 +17,7 @@ resource "librenms_device" "test" {
   hostname = "1.1.1.1"
   port     = 161
   icmp_only = {}
+  force_add = true
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -43,6 +44,7 @@ resource "librenms_device" "test" {
   hostname = "1.1.1.1"
   port     = 163
   icmp_only = {}
+  force_add = true
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
