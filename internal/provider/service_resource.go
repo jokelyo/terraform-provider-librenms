@@ -84,7 +84,7 @@ func (r *serviceResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"device_id": schema.Int32Attribute{
-				Description: "The ID of the device this service belongs to.",
+				Description: "The device ID this service is associated to.",
 				Required:    true,
 			},
 			"ignore": schema.BoolAttribute{
@@ -96,7 +96,7 @@ func (r *serviceResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Required:    true,
 			},
 			"parameters": schema.StringAttribute{
-				Description: "The parameters for the service plugin, such as `-C 30,14` for checking cert expiration with `http`.",
+				Description: "The parameters for the service plugin, such as `-C 30,14` for `http`.",
 				Required:    true,
 			},
 			"target": schema.StringAttribute{
@@ -104,7 +104,7 @@ func (r *serviceResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Required:    true,
 			},
 			"type": schema.StringAttribute{
-				Description: "The type of service to create. Must be one of the supported plugin types in LibreNMS, such as `http`, `ping`, etc.",
+				Description: "The type of service to create. Must be a supported plugin type in LibreNMS, such as `http`, `ping`, etc.",
 				Required:    true,
 			},
 		},

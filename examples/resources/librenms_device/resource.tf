@@ -7,3 +7,14 @@ resource "librenms_device" "my_server" {
     community = "public"
   }
 }
+
+# Force add an ICMP-only device.
+resource "librenms_device" "icmp_only_device" {
+  hostname  = "icmp-only-device.mydomain.com"
+  force_add = true
+
+  icmp_only = {
+    hardware = "Generic"
+    os       = "Linux"
+  }
+}

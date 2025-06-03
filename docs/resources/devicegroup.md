@@ -13,7 +13,7 @@ description: |-
 ## Example Usage
 
 ```terraform
-# create a static device group with a single device using the computed resource id
+# create a static device group with a single device
 resource "librenms_devicegroup" "my_group" {
   name = "my_group"
   type = "static"
@@ -23,10 +23,11 @@ resource "librenms_devicegroup" "my_group" {
   ]
 }
 
-# create a dynamic device group with devices that have a sysDescr containing "cloud"
+# create a dynamic device group with devices
+# that have a sysDescr containing "cloud"
 resource "librenms_devicegroup" "my_dynamic_group" {
   name        = "my_dynamic_group"
-  description = "includes devices with sysDescr containing 'cloud'"
+  description = "my cloud devices"
   type        = "dynamic"
 
   rules = jsonencode({
@@ -60,3 +61,12 @@ resource "librenms_devicegroup" "my_dynamic_group" {
 ### Read-Only
 
 - `id` (Number) The unique numeric identifier of the LibreNMS device group.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# Device Groups can be imported by specifying their numeric identifier.
+terraform import librenms_devicegroup.example 123
+```

@@ -14,21 +14,27 @@ description: |-
 
 ```terraform
 # Example: create an alert rule for down devices
+#
+# Due to the complicated structure of the rulesets,
+# I would recommend initially configuring the builder
+# ruleset in the LibreNMS UI and then exporting from
+# the API to get the correct JSON format.
+#
+# Example to get formatted builder output from an existing rule:
+#   curl -H "X-Auth-Token: token" \
+#   http://localhost:8000/api/v0/rules/2 | \
+#   jq '.rules.[0].builder | fromjson'
+#
+# You can also just use the serialized JSON string
+# as it's natively represented in the LibreNMS API output,
+# but the readability is worse.
+#
+# builder = "{\"condition\": \"AND\", ....}"
+#
 resource "librenms_alertrule" "rule1" {
   name  = "Device Down (ICMP)"
   notes = "Alert when a device is down and the reason is ICMP"
 
-  # Due to their complicated structure, I would recommend initially configuring the rule in the LibreNMS UI
-  # and then exporting from the API to get the correct JSON format.
-  #
-  # Example to get formatted builder output from an existing rule:
-  #   curl -H "X-Auth-Token: token" http://localhost:8000/api/v0/rules/2 | jq '.rules.[0].builder | fromjson'
-  #
-  # You can also just use the serialized JSON string as it's natively represented in the LibreNMS API output,
-  # but the readability is worse.
-  #
-  # builder = "{\"condition\": \"AND\", ....}"
-  #
   builder = jsonencode({
     "condition" : "AND",
     "rules" : [
@@ -61,11 +67,6 @@ resource "librenms_alertrule" "rule1" {
 
   # defaults to all devices if devices is not defined
   # devices = [1, 2]
-
-  # specify group IDs to limit the alert rule to specific device groups
-  # groups = [
-  #  librenms_devicegroup.my_group.id,
-  # ]
 }
 ```
 
@@ -96,3 +97,12 @@ resource "librenms_alertrule" "rule1" {
 - `extra` (String) Extra information stored in serialized JSON format. This is set by LibreNMS.
 - `id` (Number) The unique numeric identifier of the LibreNMS alert rule.
 - `query` (String) The SQL query rendered from the builder rules. This is set by LibreNMS.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# Alert Rules can be imported by specifying their numeric identifier.
+terraform import librenms_alertrule.example 123
+```

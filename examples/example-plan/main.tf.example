@@ -32,7 +32,6 @@ resource "librenms_service" "compute_vm_2_http" {
   device_id   = librenms_device.compute_vm_2.id
   name        = "HTTP3"
   type        = "http"
-  description = "toots"
 
   ignore     = false
   parameters = "-C 30,14"
