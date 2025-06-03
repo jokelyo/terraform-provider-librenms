@@ -140,7 +140,10 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			//},
 			"force_add": schema.BoolAttribute{
 				Optional:    true,
-				Description: "If true, the SNMP/ICMP checks will be skipped, and the device will be added immediately.",
+				Description: "If true, the SNMP/ICMP checks will be skipped, and the device will be added immediately. Only relevant during creation.",
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"override_syslocation": schema.BoolAttribute{
 				Computed:    true,
