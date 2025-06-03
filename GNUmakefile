@@ -3,6 +3,7 @@
 # -------------------------------------------------------------------------------------------
 DEVELOP_DIR := development
 COMPOSE := docker compose --project-directory ${DEVELOP_DIR} -f ${DEVELOP_DIR}/docker-compose.yml
+LIBRENMS_TOKEN ?= $(shell grep '^LIBRENMS_TOKEN=' ${DEVELOP_DIR}/.env | cut -d '=' -f2-)
 
 default: fmt lint install generate
 
@@ -25,7 +26,7 @@ test:
 	go test -v -cover -timeout=120s -parallel=10 ./...
 
 testacc:
-	TF_ACC=1 go test -v -cover -timeout 120m ./...
+	LIBRENMS_TOKEN=$(LIBRENMS_TOKEN) TF_ACC=1 go test -v -cover -timeout 120m ./internal/provider/
 
 dev-cli: .env
 ifeq (,$(findstring librenms,$($COMPOSE ps --services --filter status=running)))
@@ -48,6 +49,7 @@ dev-start: .env
 dev-stop:
 	$(COMPOSE) down
 
+# This target is meant to be used in a CI/CD pipeline as a single-use admin/api token setup.
 dev-testacc: dev-start
 	sleep 20
 	$(COMPOSE) exec librenms lnms user:add -r admin -p admin admin

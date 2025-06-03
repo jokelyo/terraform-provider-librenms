@@ -119,6 +119,7 @@ func (r *deviceGroupResource) ConfigValidators(ctx context.Context) []resource.C
 	}
 }
 
+// ValidateConfig validates the resource configuration.
 func (r *deviceGroupResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var data deviceGroupModel
 
