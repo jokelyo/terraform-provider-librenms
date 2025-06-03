@@ -17,8 +17,9 @@ provider "librenms" {
   # token = "token"
 }
 
+# update hostname to a reachable host
 resource "librenms_device" "compute_vm_2" {
-  hostname = "34.123.68.95"
+  hostname = "192.168.5.5"
 
   snmp_v2c = {
     community = "5581eb63764a093c"
@@ -39,9 +40,9 @@ resource "librenms_service" "compute_vm_2_http" {
 }
 
 # create a static device group with a single device using the computed resource id
-resource "librenms_devicegroup" "farts" {
-  name        = "farts"
-  description = "fartastic"
+resource "librenms_devicegroup" "static_group_1" {
+  name        = "static_group_1"
+  description = "my static group"
   type        = "static"
   devices = [
     librenms_device.compute_vm_2.id,
@@ -49,9 +50,9 @@ resource "librenms_devicegroup" "farts" {
 }
 
 # create a dynamic device group with devices that have a sysDescr containing "cloud"
-resource "librenms_devicegroup" "dynamic_farts" {
-  name        = "dynamic_farts"
-  description = "fartastic"
+resource "librenms_devicegroup" "test_dynamic_group_1" {
+  name        = "test_dynamic_group_1"
+  description = "Dynamic group for devices with 'cloud' in sysDescr"
   type        = "dynamic"
 
   rules = jsonencode({
@@ -113,7 +114,7 @@ resource "librenms_alertrule" "cloud_device_down_icmp" {
 
   # can also specify group IDs to limit the alert rule to specific device groups
   groups = [
-    librenms_devicegroup.dynamic_farts.id,
+    librenms_devicegroup.test_dynamic_group_1.id,
   ]
 }
 
@@ -121,10 +122,10 @@ output "librenms_device_compute_vm_2" {
   value = librenms_device.compute_vm_2.hostname
 }
 
-output "librenms_devicegroup_farts" {
-  value = librenms_devicegroup.farts
+output "librenms_devicegroup_static" {
+  value = librenms_devicegroup.static_group_1
 }
 
-output "librenms_devicegroup_dynamic_farts" {
-  value = librenms_devicegroup.dynamic_farts
+output "librenms_devicegroup_dynamic" {
+  value = librenms_devicegroup.test_dynamic_group_1
 }
