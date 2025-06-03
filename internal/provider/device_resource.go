@@ -393,6 +393,10 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		payload.Transport = plan.Transport.ValueString()
 	}
 
+	if plan.ForceAdd.ValueBool() {
+		payload.ForceAdd = true
+	}
+
 	if plan.ICMPOnly != nil {
 		payload.SNMPDisable = true
 		if !plan.ICMPOnly.Hardware.IsNull() {
