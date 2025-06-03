@@ -13,6 +13,13 @@ func TestAccServiceResource(t *testing.T) {
 			// Create and Read testing
 			{
 				Config: providerConfig + `
+resource "librenms_device" "test" {
+  hostname = "1.1.1.1"
+  port     = 161
+  icmp_only = {}
+  force_add = true
+}
+
 resource "librenms_service" "test" {
   device_id = 2
   name = "service test"

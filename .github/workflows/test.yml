@@ -78,12 +78,7 @@ jobs:
       - run: go mod download
       - name: "Start Dev LibreNMS"
         run: "make dev-testacc"
-      - name: "Extract LIBRENMS_TOKEN from .env"
-        run: |
-          echo "LIBRENMS_TOKEN=$(grep LIBRENMS_TOKEN development/.env | cut -d= -f2)" >> $GITHUB_ENV
-      - env:
-          TF_ACC: "1"
-          LIBRENMS_TOKEN: ${{ env.LIBRENMS_TOKEN }}
-        run: go test -v -cover ./internal/provider/
+      - name: "Run Acceptance Tests"
+        run: "make testacc"
         timeout-minutes: 10
 
