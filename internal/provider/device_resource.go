@@ -39,7 +39,6 @@ var (
 	_ resource.Resource                = &deviceResource{}
 	_ resource.ResourceWithConfigure   = &deviceResource{}
 	_ resource.ResourceWithImportState = &deviceResource{}
-	// _ resource.ResourceWithModifyPlan  = &deviceResource{}
 )
 
 // NewDeviceResource is a helper function to simplify the provider implementation.
@@ -332,28 +331,6 @@ func (r *deviceResource) ValidateConfig(ctx context.Context, req resource.Valida
 		)
 	}
 }
-
-// ModifyPlan is called when the plan is created or updated. It allows us to prevent changesAdd commentMore actions
-// to certain attributes that can't be modified after creation, like device_id.
-//func (r *deviceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-//	// If there's no state, this should be a creation
-//	if req.State.Raw.IsNull() {
-//		var plan deviceResourceModel
-//		diags := req.Plan.Get(ctx, &plan)
-//		resp.Diagnostics.Append(diags...)
-//		if resp.Diagnostics.HasError() {
-//			return
-//		}
-//
-//		// if display and locationID are null, then print a warning about delayed data
-//		if plan.Display.IsNull() && plan.LocationID.IsNull() {
-//			resp.Diagnostics.AddWarning(
-//				"Delayed Data Warning",
-//				"The display and location_id attributes are not set. The computed values may not be available on creation due to delayed LibreNMS discovery.",
-//			)
-//		}
-//	}
-//}
 
 // Configure sets the provider client for the resource.
 func (r *deviceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
