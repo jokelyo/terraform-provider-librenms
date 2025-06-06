@@ -7,9 +7,9 @@ terraform {
   required_version = ">= 0.1.0"
 }
 
-# See https://github.com/jokelyo/librenms-dev which:
+# See https://github.com/jokelyo/librenms-devenv which:
 # - Provides a local LibreNMS instance in Docker for testing purposes
-# - Includes a terraform plan for creating a test GCP environment
+# - Includes a terraform plan for creating test GCP and LibreNMS resources
 #
 provider "librenms" {
   host = "http://localhost:8000"
