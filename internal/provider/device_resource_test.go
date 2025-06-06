@@ -19,6 +19,39 @@ resource "librenms_device" "test" {
   icmp_only = {}
   force_add = true
 }
+
+resource "librenms_device" "test2" {
+  hostname = "1.1.1.2"
+  display = "Test Device 2"
+
+  snmp_v1 = {
+    community = "test"
+  }
+  force_add = true
+}
+
+resource "librenms_device" "test3" {
+  hostname = "1.1.1.3"
+
+  snmp_v2c = {
+    community = "test"
+  }
+  force_add = true
+}
+
+resource "librenms_device" "test4" {
+  hostname = "1.1.1.4"
+
+  snmp_v3 = {
+    auth_algorithm = "SHA"
+    auth_level = "authPriv"
+    auth_name = "user"
+    auth_pass = "test"
+    crypto_algorithm = "AES"
+    crypto_pass = "test"
+  }
+  force_add = true
+}
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("librenms_device.test", "hostname", "1.1.1.1"),
@@ -42,14 +75,50 @@ resource "librenms_device" "test" {
 				Config: providerConfig + `
 resource "librenms_device" "test" {
   hostname = "1.1.1.1"
+  display = "Test Device"
+
   port     = 163
   icmp_only = {}
+  force_add = true
+}
+
+resource "librenms_device" "test2" {
+  hostname = "1.1.1.2"
+  port     = 161
+  snmp_v1 = {
+    community = "test"
+  }
+  force_add = true
+}
+
+resource "librenms_device" "test3" {
+  hostname = "1.1.1.3"
+  port     = 161
+  snmp_v2c = {
+    community = "test"
+  }
+  force_add = true
+}
+
+resource "librenms_device" "test4" {
+  hostname = "1.1.1.4"
+
+  snmp_v3 = {
+    auth_algorithm = "SHA"
+    auth_level = "authPriv"
+    auth_name = "user"
+    auth_pass = "test"
+    crypto_algorithm = "AES"
+    crypto_pass = "test2"
+  }
   force_add = true
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// Verify device updated
+					resource.TestCheckResourceAttr("librenms_device.test", "display", "Test Device"),
 					resource.TestCheckResourceAttr("librenms_device.test", "port", "163"),
+					resource.TestCheckResourceAttr("librenms_device.test4", "snmp_v3.crypto_algorithm", "AES"),
 					//resource.TestCheckResourceAttr("librenms_device.test", "snmp_v2c.community", "test2"),
 				),
 			},

@@ -39,6 +39,7 @@ var (
 	_ resource.Resource                = &deviceResource{}
 	_ resource.ResourceWithConfigure   = &deviceResource{}
 	_ resource.ResourceWithImportState = &deviceResource{}
+	// _ resource.ResourceWithModifyPlan  = &deviceResource{}
 )
 
 // NewDeviceResource is a helper function to simplify the provider implementation.
@@ -53,17 +54,12 @@ type (
 	}
 
 	// deviceResourceModel maps resource schema data to a Go type.
-	//
-	// Display, Location, and LocationID are commented out because they
-	// are still possibly null after creation, as discovery may not have completed yet,
-	// which causes TF state errors; and there are no reliable defaults for them.
 	deviceResourceModel struct {
-		ID types.Int32 `tfsdk:"id"`
-		//Display             types.String         `tfsdk:"display"`
-		//Location            types.String         `tfsdk:"location"`
-		//LocationID          types.Int32          `tfsdk:"location_id"`
+		ID                  types.Int32          `tfsdk:"id"`
+		Display             types.String         `tfsdk:"display"`
 		ForceAdd            types.Bool           `tfsdk:"force_add"`
 		Hostname            types.String         `tfsdk:"hostname"`
+		Location            types.String         `tfsdk:"location"`
 		OverrideSysLocation types.Bool           `tfsdk:"override_syslocation"`
 		PollerGroup         types.Int32          `tfsdk:"poller_group"`
 		Port                types.Int32          `tfsdk:"port"`
@@ -119,25 +115,26 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					int32planmodifier.UseStateForUnknown(),
 				},
 			},
-			//"display": schema.StringAttribute{
-			//	Computed:    true,
-			//	Description: "A string to display as the name of this device, defaults to hostname.",
-			//	Optional:    true,
-			//},
+			"display": schema.StringAttribute{
+				Computed:    true,
+				Description: "The device display name. It defaults to the discovered hostname.",
+				Optional:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"hostname": schema.StringAttribute{
 				Description: "The device hostname or IP address. If hostname, it must have a valid DNS entry.",
 				Required:    true,
 			},
-			//"location": schema.StringAttribute{
-			//	Computed:    true,
-			//	Description: "The name of the device's location.",
-			//	Optional:    true,
-			//},
-			//"location_id": schema.Int32Attribute{
-			//	Computed:    true,
-			//	Description: "The ID of the device's location.",
-			//	Optional:    true,
-			//},
+			"location": schema.StringAttribute{
+				Computed:    true,
+				Description: "The name of the device's location. It defaults to the discovered location name.",
+				Optional:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"force_add": schema.BoolAttribute{
 				Optional:    true,
 				Description: "If true, the SNMP/ICMP checks will be skipped, and the device will be added immediately. Only relevant during creation.",
@@ -336,6 +333,28 @@ func (r *deviceResource) ValidateConfig(ctx context.Context, req resource.Valida
 	}
 }
 
+// ModifyPlan is called when the plan is created or updated. It allows us to prevent changesAdd commentMore actions
+// to certain attributes that can't be modified after creation, like device_id.
+//func (r *deviceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+//	// If there's no state, this should be a creation
+//	if req.State.Raw.IsNull() {
+//		var plan deviceResourceModel
+//		diags := req.Plan.Get(ctx, &plan)
+//		resp.Diagnostics.Append(diags...)
+//		if resp.Diagnostics.HasError() {
+//			return
+//		}
+//
+//		// if display and locationID are null, then print a warning about delayed data
+//		if plan.Display.IsNull() && plan.LocationID.IsNull() {
+//			resp.Diagnostics.AddWarning(
+//				"Delayed Data Warning",
+//				"The display and location_id attributes are not set. The computed values may not be available on creation due to delayed LibreNMS discovery.",
+//			)
+//		}
+//	}
+//}
+
 // Configure sets the provider client for the resource.
 func (r *deviceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
@@ -370,15 +389,12 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	// Set optional fields
-	//if !plan.Display.IsNull() {
-	//	payload.Display = plan.Display.ValueString()
-	//}
-	//if !plan.Location.IsNull() {
-	//	payload.Location = plan.Location.ValueString()
-	//}
-	//if !plan.LocationID.IsNull() {
-	//	payload.LocationID = int(plan.LocationID.ValueInt32())
-	//}
+	if !plan.Display.IsNull() {
+		payload.Display = plan.Display.ValueString()
+	}
+	if !plan.Location.IsNull() {
+		payload.Location = plan.Location.ValueString()
+	}
 	if !plan.OverrideSysLocation.IsNull() {
 		payload.OverrideSysLocation = plan.OverrideSysLocation.ValueBool()
 	}
@@ -476,15 +492,18 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	plan.Transport = types.StringValue(deviceResp.Devices[0].Transport)
 
 	// Check optionally null fields that may have been updated by SNMP
-	//if deviceResp.Devices[0].Display != nil {
-	//	plan.Display = types.StringValue(*deviceResp.Devices[0].Display)
-	//}
-	//if deviceResp.Devices[0].Location != nil {
-	//	plan.Location = types.StringValue(*deviceResp.Devices[0].Location)
-	//}
-	//if deviceResp.Devices[0].LocationID != nil {
-	//	plan.LocationID = types.Int32Value(int32(*deviceResp.Devices[0].LocationID))
-	//}
+	if deviceResp.Devices[0].Display != nil {
+		plan.Display = types.StringValue(*deviceResp.Devices[0].Display)
+	} else {
+		plan.Display = types.StringNull()
+	}
+
+	if deviceResp.Devices[0].Location != nil {
+		plan.Location = types.StringValue(*deviceResp.Devices[0].Location)
+	} else {
+		plan.Location = types.StringNull()
+	}
+
 	if plan.ICMPOnly != nil {
 		plan.ICMPOnly.Hardware = types.StringValue(deviceResp.Devices[0].Hardware)
 		plan.ICMPOnly.OS = types.StringValue(deviceResp.Devices[0].OS)
@@ -544,20 +563,17 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 	state.Transport = types.StringValue(deviceResp.Devices[0].Transport)
 
 	// possibly null fields
-	//state.Display = types.StringNull()
-	//if deviceResp.Devices[0].Display != nil {
-	//	state.Display = types.StringValue(*deviceResp.Devices[0].Display)
-	//}
-	//
-	//state.Location = types.StringNull()
-	//if deviceResp.Devices[0].Location != nil {
-	//	state.Display = types.StringValue(*deviceResp.Devices[0].Location)
-	//}
-	//
-	//state.LocationID = types.Int32Null()
-	//if deviceResp.Devices[0].LocationID != nil {
-	//	state.LocationID = types.Int32Value(int32(*deviceResp.Devices[0].LocationID))
-	//}
+	if deviceResp.Devices[0].Display != nil {
+		state.Display = types.StringValue(*deviceResp.Devices[0].Display)
+	} else {
+		state.Display = types.StringNull()
+	}
+
+	if deviceResp.Devices[0].Location != nil {
+		state.Location = types.StringValue(*deviceResp.Devices[0].Location)
+	} else {
+		state.Location = types.StringNull()
+	}
 
 	state.ICMPOnly = nil
 	state.SnmpV1 = nil
@@ -608,23 +624,31 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 	payload := new(librenms.DeviceUpdateRequest)
 
 	// Build a payload of fields that have changed; LibreNMS API only supports partial updates.
-	if !plan.OverrideSysLocation.IsUnknown() && !plan.OverrideSysLocation.Equal(state.OverrideSysLocation) {
+	if !plan.Display.Equal(state.Display) {
+		payload.Field = append(payload.Field, "display")
+		payload.Data = append(payload.Data, plan.Display.ValueString())
+	}
+	if !plan.Location.Equal(state.Location) {
+		payload.Field = append(payload.Field, "location")
+		payload.Data = append(payload.Data, plan.Location.ValueString())
+	}
+	if !plan.OverrideSysLocation.Equal(state.OverrideSysLocation) {
 		payload.Field = append(payload.Field, "override_sysLocation")
 		payload.Data = append(payload.Data, librenms.Bool(plan.OverrideSysLocation.ValueBool()))
 	}
-	if !plan.PollerGroup.IsUnknown() && !plan.PollerGroup.Equal(state.PollerGroup) {
+	if !plan.PollerGroup.Equal(state.PollerGroup) {
 		payload.Field = append(payload.Field, "poller_group")
 		payload.Data = append(payload.Data, int(plan.PollerGroup.ValueInt32()))
 	}
-	if !plan.Port.IsUnknown() && !plan.Port.Equal(state.Port) {
+	if !plan.Port.Equal(state.Port) {
 		payload.Field = append(payload.Field, "port")
 		payload.Data = append(payload.Data, int(plan.Port.ValueInt32()))
 	}
-	if !plan.PortAssociationMode.IsUnknown() && !plan.PortAssociationMode.Equal(state.PortAssociationMode) {
+	if !plan.PortAssociationMode.Equal(state.PortAssociationMode) {
 		payload.Field = append(payload.Field, "port_association_mode")
 		payload.Data = append(payload.Data, int(plan.PortAssociationMode.ValueInt32()))
 	}
-	if !plan.Transport.IsUnknown() && !plan.Transport.Equal(state.Transport) {
+	if !plan.Transport.Equal(state.Transport) {
 		payload.Field = append(payload.Field, "transport")
 		payload.Data = append(payload.Data, plan.Transport.ValueString())
 	}
@@ -726,15 +750,18 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 	plan.Transport = types.StringValue(deviceResp.Devices[0].Transport)
 
 	// Check optionally null fields that may have been updated by SNMP
-	//if deviceResp.Devices[0].Display != nil {
-	//	plan.Display = types.StringValue(*deviceResp.Devices[0].Display)
-	//}
-	//if deviceResp.Devices[0].Location != nil {
-	//	plan.Location = types.StringValue(*deviceResp.Devices[0].Location)
-	//}
-	//if deviceResp.Devices[0].LocationID != nil {
-	//	plan.LocationID = types.Int32Value(int32(*deviceResp.Devices[0].LocationID))
-	//}
+	if deviceResp.Devices[0].Display != nil {
+		plan.Display = types.StringValue(*deviceResp.Devices[0].Display)
+	} else {
+		plan.Display = types.StringNull()
+	}
+
+	if deviceResp.Devices[0].Location != nil {
+		plan.Location = types.StringValue(*deviceResp.Devices[0].Location)
+	} else {
+		plan.Location = types.StringNull()
+	}
+
 	if plan.ICMPOnly != nil {
 		plan.ICMPOnly.Hardware = types.StringValue(deviceResp.Devices[0].Hardware)
 		plan.ICMPOnly.OS = types.StringValue(deviceResp.Devices[0].OS)
