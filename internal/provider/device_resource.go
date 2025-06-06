@@ -305,7 +305,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 // ConfigValidators defines validation rules for the resource configuration.
 func (r *deviceResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
-		resourcevalidator.Conflicting(
+		resourcevalidator.ExactlyOneOf(
 			path.MatchRoot("icmp_only"),
 			path.MatchRoot("snmp_v1"),
 			path.MatchRoot("snmp_v2c"),
@@ -673,21 +673,21 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 		payload.Data = append(payload.Data, librenms.Bool(false))
 	}
 
-	if plan.SnmpV1 != nil && state.SnmpV1 == nil {
+	if plan.SnmpV1 != nil {
 		payload.Field = append(payload.Field, "snmpver")
 		payload.Data = append(payload.Data, snmpV1)
 		payload.Field = append(payload.Field, "community")
 		payload.Data = append(payload.Data, plan.SnmpV1.Community.ValueString())
 	}
 
-	if plan.SnmpV2C != nil && state.SnmpV2C == nil {
+	if plan.SnmpV2C != nil {
 		payload.Field = append(payload.Field, "snmpver")
 		payload.Data = append(payload.Data, snmpV2C)
 		payload.Field = append(payload.Field, "community")
 		payload.Data = append(payload.Data, plan.SnmpV2C.Community.ValueString())
 	}
 
-	if plan.SnmpV3 != nil && state.SnmpV3 == nil {
+	if plan.SnmpV3 != nil {
 		payload.Field = append(payload.Field, "snmpver")
 		payload.Data = append(payload.Data, snmpV3)
 		payload.Field = append(payload.Field, "authalgo")
