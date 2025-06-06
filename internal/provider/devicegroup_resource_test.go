@@ -34,9 +34,11 @@ resource "librenms_device" "test_device2" {
 resource "librenms_devicegroup" "test0" {
   name = "test group static"
   type = "static"
+
+  # Add out of order to verify it doesn't affect plan
   devices = [
-	librenms_device.test_device1.id,
-	librenms_device.test_device2.id,
+    librenms_device.test_device2.id,
+    librenms_device.test_device1.id,
   ]
 }
 
