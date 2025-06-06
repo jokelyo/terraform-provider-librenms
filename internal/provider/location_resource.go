@@ -174,7 +174,7 @@ func (r *locationResource) Create(ctx context.Context, req resource.CreateReques
 
 	if location.ID == 0 {
 		resp.Diagnostics.AddError(
-			"Unexpected LibreNMS API Response",
+			"Error Finding Created Location",
 			fmt.Sprintf("Unable to find location with name '%s'. Please check LibreNMS.", plan.Name.ValueString()),
 		)
 		return

@@ -83,10 +83,10 @@ resource "librenms_alertrule" "rule1" {
 ### Optional
 
 - `delay` (String) The delay before the alert rule is triggered, in a format like `5m` or `1h`.
-- `devices` (List of Number) The list of device IDs attached to the alert rule. If not set, the rule applies to all devices.
-- `groups` (List of Number) The list of group IDs attached to the alert rule. This can be defined alongside `devices` and `locations`.
+- `devices` (Set of Number) The set of device IDs attached to the alert rule. If not set, the rule applies to all devices.
+- `groups` (Set of Number) The set of group IDs attached to the alert rule. This can be defined alongside `devices` and `locations`.
 - `interval` (String) The interval at which the alert rule is checked, in a format like `5m` or `1h`.
-- `locations` (List of Number) The list of location IDs attached to the alert rule. This can be defined alongside `devices` and `groups`.
+- `locations` (Set of Number) The set of location IDs attached to the alert rule. This can be defined alongside `devices` and `groups`.
 - `max_alerts` (Number) The number of times the alert rule will send an alert.
 - `mute` (Boolean) Whether the alert rule is muted. Muted rules do not trigger alerts.
 - `notes` (String) The alert rule notes.
