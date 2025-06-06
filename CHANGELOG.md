@@ -1,3 +1,6 @@
+## 0.2.1
+ * Update alertrule `devices`, `groups`, and `locations` to Set instead of List
+
 ## 0.2.0
  * Add `librenms_location` resource support
  * Update `librenms_devicegroup.devices` to Set instead of List

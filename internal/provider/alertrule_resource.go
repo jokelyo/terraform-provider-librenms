@@ -52,12 +52,12 @@ type (
 		ID           types.Int32          `tfsdk:"id"`
 		Builder      jsontypes.Normalized `tfsdk:"builder"`
 		Delay        types.String         `tfsdk:"delay"`
-		Devices      types.List           `tfsdk:"devices"`
+		Devices      types.Set            `tfsdk:"devices"`
 		Disabled     types.Bool           `tfsdk:"disabled"`
 		Extra        jsontypes.Normalized `tfsdk:"extra"`
-		Groups       types.List           `tfsdk:"groups"`
+		Groups       types.Set            `tfsdk:"groups"`
 		Interval     types.String         `tfsdk:"interval"`
-		Locations    types.List           `tfsdk:"locations"`
+		Locations    types.Set            `tfsdk:"locations"`
 		MaxAlerts    types.Int32          `tfsdk:"max_alerts"` // `count` is a reserved root attribute
 		Mute         types.Bool           `tfsdk:"mute"`
 		Name         types.String         `tfsdk:"name"`
@@ -93,8 +93,8 @@ func (r *alertRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Description: "The delay before the alert rule is triggered, in a format like `5m` or `1h`.",
 				Optional:    true,
 			},
-			"devices": schema.ListAttribute{
-				Description: "The list of device IDs attached to the alert rule. If not set, the rule applies to all devices.",
+			"devices": schema.SetAttribute{
+				Description: "The set of device IDs attached to the alert rule. If not set, the rule applies to all devices.",
 				Optional:    true,
 				ElementType: types.Int32Type,
 			},
@@ -107,8 +107,8 @@ func (r *alertRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Computed:    true,
 				CustomType:  jsontypes.NormalizedType{},
 			},
-			"groups": schema.ListAttribute{
-				Description: "The list of group IDs attached to the alert rule. This can be defined alongside `devices` and `locations`.",
+			"groups": schema.SetAttribute{
+				Description: "The set of group IDs attached to the alert rule. This can be defined alongside `devices` and `locations`.",
 				Optional:    true,
 				ElementType: types.Int32Type,
 			},
@@ -116,8 +116,8 @@ func (r *alertRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Description: "The interval at which the alert rule is checked, in a format like `5m` or `1h`.",
 				Optional:    true,
 			},
-			"locations": schema.ListAttribute{
-				Description: "The list of location IDs attached to the alert rule. This can be defined alongside `devices` and `groups`.",
+			"locations": schema.SetAttribute{
+				Description: "The set of location IDs attached to the alert rule. This can be defined alongside `devices` and `groups`.",
 				Optional:    true,
 				ElementType: types.Int32Type,
 			},
@@ -220,9 +220,6 @@ func (r *alertRuleResource) Create(ctx context.Context, req resource.CreateReque
 		Notes:        plan.Notes.ValueString(),
 		ProcedureURL: plan.ProcedureURL.ValueString(),
 		Severity:     plan.Severity.ValueString(),
-		Devices:      make([]int, 0),
-		Groups:       make([]int, 0),
-		Locations:    make([]int, 0),
 	}
 
 	diags = plan.Devices.ElementsAs(ctx, &payload.Devices, false)
@@ -336,9 +333,6 @@ func (r *alertRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	state.Name = types.StringValue(alertRule.Name)
 	state.Query = types.StringValue(alertRule.Query)
 	state.Severity = types.StringValue(alertRule.Severity)
-	state.Devices = types.ListNull(types.Int32Type)
-	state.Groups = types.ListNull(types.Int32Type)
-	state.Locations = types.ListNull(types.Int32Type)
 
 	// count, delay, interval, mute are all stored in extra as serialized JSON.
 	// The delay and interval are represented in seconds, even though their input is in a format like `5m` or `1h`.
@@ -348,44 +342,52 @@ func (r *alertRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	// it shouldn't cause errors on apply.
 
 	// check possibly null fields
-	state.Notes = types.StringNull()
 	if alertRule.Notes != nil {
 		state.Notes = types.StringValue(*alertRule.Notes)
+	} else {
+		state.Notes = types.StringNull()
 	}
 
-	state.ProcedureURL = types.StringNull()
 	if alertRule.ProcedureURL != nil {
 		state.ProcedureURL = types.StringValue(*alertRule.ProcedureURL)
+	} else {
+		state.ProcedureURL = types.StringNull()
 	}
 
 	// Populate Devices list
 	if len(alertRule.Devices) > 0 {
 		var devicesDiags diag.Diagnostics
-		state.Devices, devicesDiags = types.ListValueFrom(ctx, types.Int32Type, alertRule.Devices)
+		state.Devices, devicesDiags = types.SetValueFrom(ctx, types.Int32Type, alertRule.Devices)
 		resp.Diagnostics.Append(devicesDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
+	} else {
+		state.Devices = types.SetNull(types.Int32Type)
 	}
 
 	// Populate Groups list
 	if len(alertRule.Groups) > 0 {
 		var groupsDiags diag.Diagnostics
-		state.Groups, groupsDiags = types.ListValueFrom(ctx, types.Int32Type, alertRule.Groups)
+		state.Groups, groupsDiags = types.SetValueFrom(ctx, types.Int32Type, alertRule.Groups)
 		resp.Diagnostics.Append(groupsDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
+	} else {
+		state.Groups = types.SetNull(types.Int32Type)
 	}
 
 	// Populate Locations list
 	if len(alertRule.Locations) > 0 {
 		var locationsDiags diag.Diagnostics
-		state.Locations, locationsDiags = types.ListValueFrom(ctx, types.Int32Type, alertRule.Locations)
+		state.Locations, locationsDiags = types.SetValueFrom(ctx, types.Int32Type, alertRule.Locations)
 		resp.Diagnostics.Append(locationsDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
+	} else {
+		state.Locations = types.SetNull(types.Int32Type)
 	}
 
 	// Set refreshed state
@@ -420,9 +422,6 @@ func (r *alertRuleResource) Update(ctx context.Context, req resource.UpdateReque
 			Notes:        plan.Notes.ValueString(),
 			ProcedureURL: plan.ProcedureURL.ValueString(),
 			Severity:     plan.Severity.ValueString(),
-			Devices:      make([]int, 0),
-			Groups:       make([]int, 0),
-			Locations:    make([]int, 0),
 		},
 	}
 
