@@ -43,10 +43,6 @@ type (
 	}
 
 	// serviceResourceModel maps resource schema data to a Go type.
-	//
-	// Display, Location, and LocationID are commented out because they
-	// are still possibly null after creation, as discovery may not have completed yet,
-	// which causes TF state errors; and there are no reliable defaults for them.
 	serviceResourceModel struct {
 		ID          types.Int32  `tfsdk:"id"`
 		Description types.String `tfsdk:"description"`
