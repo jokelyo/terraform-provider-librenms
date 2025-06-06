@@ -116,7 +116,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"display": schema.StringAttribute{
 				Computed:    true,
-				Description: "The device display name. It defaults to the discovered hostname.",
+				Description: "An optional device display name to use instead of hostname.",
 				Optional:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

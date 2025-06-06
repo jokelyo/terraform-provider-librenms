@@ -77,7 +77,7 @@ resource "librenms_devicegroup" "my_group" {
 ### Optional
 
 - `description` (String) The device group description.
-- `devices` (List of Number) The list of device IDs in the group. This is only applicable for static device groups.
+- `devices` (Set of Number) The set of device IDs in the group. This is only applicable for static device groups.
 - `rules` (String) The rules for dynamic device groups, in serialized JSON format. This is only applicable for dynamic device groups. Using an encoded string supports the arbitrarily-deep nested structure of the LibreNMS rulesets.
 
 ### Read-Only

@@ -67,7 +67,7 @@ func (r *locationResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"fixed_coordinates": schema.BoolAttribute{
-				Description: "If true, the location will use fixed coordinates instead of dynamic ones.",
+				Description: "If true, the location will use fixed coordinates instead of discovered ones.",
 				Optional:    true,
 			},
 			"latitude": schema.Float64Attribute{
