@@ -27,7 +27,6 @@ var (
 	_           resource.Resource                = &serviceResource{}
 	_           resource.ResourceWithConfigure   = &serviceResource{}
 	_           resource.ResourceWithImportState = &serviceResource{}
-	_           resource.ResourceWithModifyPlan  = &serviceResource{}
 	reServiceID                                  = regexp.MustCompile(`\(#(\d+)\)$`)
 )
 
@@ -82,6 +81,9 @@ func (r *serviceResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"device_id": schema.Int32Attribute{
 				Description: "The device ID this service is associated to.",
 				Required:    true,
+				PlanModifiers: []planmodifier.Int32{
+					int32planmodifier.RequiresReplace(),
+				},
 			},
 			"ignore": schema.BoolAttribute{
 				Description: "If true, the service will be ignored by LibreNMS.",
@@ -104,40 +106,6 @@ func (r *serviceResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Required:    true,
 			},
 		},
-	}
-}
-
-// ModifyPlan is called when the plan is created or updated. It allows us to prevent changes
-// to certain attributes that can't be modified after creation, like device_id.
-func (r *serviceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	// If there's no plan or state, this must be a creation or deletion, not an update
-	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {
-		return
-	}
-
-	var plan, state serviceResourceModel
-
-	// Retrieve the resource from plan
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Retrieve the resource from state
-	diags = req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Check if device_id is being changed
-	if !plan.DeviceID.Equal(state.DeviceID) {
-		resp.Diagnostics.AddError(
-			"Device ID Change Not Allowed",
-			"Changing the device ID of an existing service is not supported. Please delete and recreate the service with the new device ID.",
-		)
-		return
 	}
 }
 
