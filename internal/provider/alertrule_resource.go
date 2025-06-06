@@ -360,51 +360,32 @@ func (r *alertRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	// Populate Devices list
 	if len(alertRule.Devices) > 0 {
-		deviceElements := make([]types.Int32, len(alertRule.Devices))
-		for i, deviceID := range alertRule.Devices {
-			deviceElements[i] = types.Int32Value(int32(deviceID))
-		}
-
 		var devicesDiags diag.Diagnostics
-		state.Devices, devicesDiags = types.ListValueFrom(ctx, types.Int32Type, deviceElements)
+		state.Devices, devicesDiags = types.ListValueFrom(ctx, types.Int32Type, alertRule.Devices)
 		resp.Diagnostics.Append(devicesDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-	} else {
-		state.Devices = types.ListNull(types.Int32Type)
 	}
 
 	// Populate Groups list
 	if len(alertRule.Groups) > 0 {
-		groupElements := make([]types.Int32, len(alertRule.Groups))
-		for i, groupID := range alertRule.Groups {
-			groupElements[i] = types.Int32Value(int32(groupID))
-		}
 		var groupsDiags diag.Diagnostics
-		state.Groups, groupsDiags = types.ListValueFrom(ctx, types.Int32Type, groupElements)
+		state.Groups, groupsDiags = types.ListValueFrom(ctx, types.Int32Type, alertRule.Groups)
 		resp.Diagnostics.Append(groupsDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-	} else {
-		state.Groups = types.ListNull(types.Int32Type)
 	}
 
 	// Populate Locations list
 	if len(alertRule.Locations) > 0 {
-		locationElements := make([]types.Int32, len(alertRule.Locations))
-		for i, locationID := range alertRule.Locations {
-			locationElements[i] = types.Int32Value(int32(locationID))
-		}
 		var locationsDiags diag.Diagnostics
-		state.Locations, locationsDiags = types.ListValueFrom(ctx, types.Int32Type, locationElements)
+		state.Locations, locationsDiags = types.ListValueFrom(ctx, types.Int32Type, alertRule.Locations)
 		resp.Diagnostics.Append(locationsDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-	} else {
-		state.Locations = types.ListNull(types.Int32Type)
 	}
 
 	// Set refreshed state

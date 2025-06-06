@@ -4,7 +4,7 @@ terraform {
       source = "registry.terraform.io/jokelyo/librenms"
     }
   }
-  required_version = ">= 0.1.0"
+  required_version = ">= 1.11"
 }
 
 # See https://github.com/jokelyo/librenms-devenv which:
