@@ -1,3 +1,6 @@
+## 0.2.2
+ * Add doc templates for ruleset explanations.
+
 ## 0.2.1
  * Update alertrule `devices`, `groups`, and `locations` to Set instead of List
 
