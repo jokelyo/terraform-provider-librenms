@@ -94,7 +94,7 @@ resource "librenms_device" "test2" {
 resource "librenms_device" "test3" {
   hostname = "1.1.1.3"
   port     = 161
-  snmp_v2c = {
+  snmp_v1 = {
     community = "test"
   }
   force_add = true
@@ -115,9 +115,12 @@ resource "librenms_device" "test4" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					// Verify device updated
+					// Verify test device updated
 					resource.TestCheckResourceAttr("librenms_device.test", "display", "Test Device"),
 					resource.TestCheckResourceAttr("librenms_device.test", "port", "163"),
+					// Verify test3 updated
+					resource.TestCheckResourceAttr("librenms_device.test3", "snmp_v1.community", "test"),
+					// Verify test4 updated
 					resource.TestCheckResourceAttr("librenms_device.test4", "snmp_v3.crypto_algorithm", "AES"),
 					//resource.TestCheckResourceAttr("librenms_device.test", "snmp_v2c.community", "test2"),
 				),
