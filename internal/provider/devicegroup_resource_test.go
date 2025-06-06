@@ -13,8 +13,36 @@ func TestAccDeviceGroupResource(t *testing.T) {
 			// Create and Read testing
 			{
 				Config: providerConfig + `
+resource "librenms_device" "test_device1" {
+  hostname  = "192.168.5.5"
+  force_add = true
+
+  snmp_v2c = {
+    community = "public"
+  }
+}
+resource "librenms_device" "test_device2" {
+  hostname  = "192.168.5.6"
+  force_add = true
+
+  snmp_v2c = {
+    community = "public"
+  }
+}
+
+# Create a device group with static rules
+resource "librenms_devicegroup" "test0" {
+  name = "test group static"
+  type = "static"
+  devices = [
+	librenms_device.test_device1.id,
+	librenms_device.test_device2.id,
+  ]
+}
+
+# Create a device group with dynamic rules
 resource "librenms_devicegroup" "test1" {
-  name = "test group"
+  name = "test group dynamic"
   type = "dynamic"
   rules = jsonencode({
     "condition" : "AND",
@@ -32,9 +60,15 @@ resource "librenms_devicegroup" "test1" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("librenms_devicegroup.test1", "name", "test group"),
+					// check dynamic group attributes
+					resource.TestCheckResourceAttr("librenms_devicegroup.test0", "name", "test group static"),
+					resource.TestCheckResourceAttr("librenms_devicegroup.test0", "type", "static"),
+					resource.TestCheckResourceAttr("librenms_devicegroup.test0", "devices.#", "2"),
+					// check static group attributes
+					resource.TestCheckResourceAttr("librenms_devicegroup.test1", "name", "test group dynamic"),
 					resource.TestCheckResourceAttr("librenms_devicegroup.test1", "type", "dynamic"),
 					// Verify dynamic values have any value set in the state.
+					resource.TestCheckResourceAttrSet("librenms_devicegroup.test0", "id"),
 					resource.TestCheckResourceAttrSet("librenms_devicegroup.test1", "id"),
 				),
 			},
@@ -50,8 +84,34 @@ resource "librenms_devicegroup" "test1" {
 			// Update and Read testing
 			{
 				Config: providerConfig + `
-resource "librenms_devicegroup" "test1" {
+resource "librenms_device" "test_device1" {
+  hostname  = "192.168.5.5"
+  force_add = true
+
+  snmp_v2c = {
+    community = "public"
+  }
+}
+resource "librenms_device" "test_device2" {
+  hostname  = "192.168.5.6"
+  force_add = true
+
+  snmp_v2c = {
+    community = "public"
+  }
+}
+
+# Modify member list
+resource "librenms_devicegroup" "test0" {
   name = "test group"
+  type = "static"
+  devices = [
+	librenms_device.test_device1.id,
+  ]
+}
+
+resource "librenms_devicegroup" "test1" {
+  name = "test group dynamic"
   description = "This is a test group"
   type = "dynamic"
   rules = jsonencode({
@@ -70,7 +130,8 @@ resource "librenms_devicegroup" "test1" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					// Verify device group updated
+					// Verify device groups updated
+					resource.TestCheckResourceAttr("librenms_devicegroup.test0", "devices.#", "1"),
 					resource.TestCheckResourceAttr("librenms_devicegroup.test1", "description", "This is a test group"),
 				),
 			},

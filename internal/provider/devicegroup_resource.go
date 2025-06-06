@@ -50,7 +50,7 @@ type (
 		ID          types.Int32          `tfsdk:"id"`
 		Name        types.String         `tfsdk:"name"`
 		Description types.String         `tfsdk:"description"`
-		Devices     types.List           `tfsdk:"devices"`
+		Devices     types.Set            `tfsdk:"devices"`
 		Rules       jsontypes.Normalized `tfsdk:"rules"`
 		Type        types.String         `tfsdk:"type"`
 	}
@@ -93,8 +93,8 @@ func (r *deviceGroupResource) Schema(_ context.Context, _ resource.SchemaRequest
 				},
 			},
 
-			"devices": schema.ListAttribute{
-				Description: "The list of device IDs in the group. This is only applicable for static device groups.",
+			"devices": schema.SetAttribute{
+				Description: "The set of device IDs in the group. This is only applicable for static device groups.",
 				Optional:    true,
 				ElementType: types.Int32Type,
 			},
@@ -297,13 +297,13 @@ func (r *deviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		}
 
 		// update devices list
-		var devices []types.Int32
+		var devices []int
 		for _, device := range members.Devices {
-			devices = append(devices, types.Int32Value(int32(device.ID)))
+			devices = append(devices, device.ID)
 		}
 
 		var devicesDiags diag.Diagnostics
-		state.Devices, devicesDiags = types.ListValueFrom(ctx, types.Int32Type, devices)
+		state.Devices, devicesDiags = types.SetValueFrom(ctx, types.Int32Type, devices)
 		resp.Diagnostics.Append(devicesDiags...)
 		if resp.Diagnostics.HasError() {
 			return
