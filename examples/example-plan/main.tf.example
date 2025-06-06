@@ -17,14 +17,35 @@ provider "librenms" {
   # token = "token"
 }
 
-# update hostname to a reachable host
-resource "librenms_device" "compute_vm_2" {
-  hostname  = "192.168.5.5"
+resource "librenms_device" "compute_vm_1" {
+  hostname  = "192.168.5.4"
+  display   = "Compute VM 1"
   force_add = true
 
   snmp_v2c = {
     community = "5581eb63764a093c"
   }
+}
+
+resource "librenms_device" "compute_vm_2" {
+  hostname  = "192.168.5.5"
+  display   = "Compute VM 2"
+  force_add = true
+
+  location = librenms_location.test_location.name
+
+  snmp_v2c = {
+    community = "5581eb63764a093c"
+  }
+}
+
+# create an example location
+resource "librenms_location" "test_location" {
+  name = "test location"
+
+  fixed_coordinates = true
+  latitude = -45.0862462
+  longitude = 37.4220648
 }
 
 # create a service that checks http on the device
@@ -39,12 +60,13 @@ resource "librenms_service" "compute_vm_2_http" {
 
 }
 
-# create a static device group with a single device using the computed resource id
+# create a static device group using the computed resource id
 resource "librenms_devicegroup" "static_group_1" {
   name        = "static_group_1"
   description = "my static group"
   type        = "static"
   devices = [
+    librenms_device.compute_vm_1.id,
     librenms_device.compute_vm_2.id,
   ]
 }

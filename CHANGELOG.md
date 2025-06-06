@@ -1,3 +1,11 @@
+## 0.2.0
+ * Add `librenms_location` resource support
+ * Update `librenms_devicegroup.devices` to Set instead of List
+ * Add device `display` and `location` attributes
+ * Fix snmp_ attr handling in device resource
+ * Refresh go-librenms to fix some float64 handling
+ * Add test scenarios
+
 ## 0.1.4
  * Update service.device_id to RequiresReplace
  * Simplify list handling in alertrule
