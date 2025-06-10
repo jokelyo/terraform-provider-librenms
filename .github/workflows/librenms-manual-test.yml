@@ -1,0 +1,53 @@
+name: LibreNMS Testing
+on:
+  workflow_dispatch:
+    inputs:
+      librenms_version:
+        description: 'LibreNMS version to test'
+        required: true
+        default: 'latest'
+
+# Testing only needs permissions to read the repository contents.
+permissions:
+  contents: read
+
+jobs:
+  # Ensure project builds before running testing matrix
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - run: go mod download
+      - run: go build -v .
+
+  # Ensure project builds before running testing matrix
+  test:
+    name: LibreNMS Integration Test
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LIBRENMS_VERSION: ${{ github.event.inputs.librenms_version }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: 1.12.*
+          terraform_wrapper: false
+      - run: go mod download
+      - name: "Start Dev LibreNMS"
+        run: "make dev-testacc"
+      - name: "Run Acceptance Tests"
+        run: "make testacc"
+        timeout-minutes: 10
+
