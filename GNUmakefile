@@ -4,7 +4,7 @@
 DEVELOP_DIR := development
 COMPOSE := docker compose --project-directory ${DEVELOP_DIR} -f ${DEVELOP_DIR}/docker-compose.yml
 ifeq ($(GITHUB_ACTIONS),true)
-COMPOSE += --progress plain
+COMPOSE += --progress quiet
 endif
 LIBRENMS_TOKEN ?= $(shell grep '^LIBRENMS_TOKEN=' ${DEVELOP_DIR}/.env | cut -d '=' -f2-)
 

@@ -2,9 +2,9 @@
 
 ## Requirements
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.11
-- [Go](https://golang.org/doc/install) >= 1.23
-- LibreNMS >= 25.x
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.11, <= 1.15
+- [Go](https://golang.org/doc/install) >= 1.27
+- LibreNMS 25.4.0 - 25.7.0 (pending acc-tests for 26.x)
 
 ## Building The Provider
 
@@ -73,8 +73,9 @@ In order to run the full suite of Acceptance tests, run `make testacc`.
 make testacc
 ```
 
-For local development, create a file named `~/.terraformrc` (or `terraform.rc` on Windows) with the following content, 
+For local development, create a file named `~/.terraformrc` (or `terraform.rc` on Windows) with the following content,
 adjusting the path to where your go install command places the binary (typically `$GOPATH/bin` or `$GOBIN`):
+
 ```hcl
 provider_installation {
   dev_overrides {
@@ -90,5 +91,5 @@ provider_installation {
 
 ## Development Environment
 
-For information about the development Docker stack and available make commands for local development and testing, 
+For information about the development Docker stack and available make commands for local development and testing,
 please see the [development/README.md](development/README.md) file.
