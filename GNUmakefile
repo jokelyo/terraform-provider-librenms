@@ -52,7 +52,7 @@ dev-stop:
 # This target is meant to be used in a CI/CD pipeline as a single-use admin/api token setup.
 dev-testacc: dev-start
 	sleep 20
-	$(COMPOSE) exec librenms lnms user:add -r admin -p admin admin
+	$(COMPOSE) exec librenms lnms user:add -r admin -p Admin123 admin
 	$(COMPOSE) exec librenms sh -c 'mariadb -h db -u $$MYSQL_USER -p$$MYSQL_PASSWORD -D librenms \
       -e "insert into api_tokens (id,user_id,token_hash,description,disabled) VALUES (1,1,\"$$LIBRENMS_TOKEN\",\"\",0);"'
 
