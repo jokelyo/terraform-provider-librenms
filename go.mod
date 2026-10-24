@@ -1,6 +1,6 @@
 module terraform-provider-librenms
 
-go 1.24.3
+go 1.27.0
 
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.15.1
