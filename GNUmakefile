@@ -56,8 +56,13 @@ dev-stop:
 dev-testacc: dev-start
 	sleep 20
 	$(COMPOSE) exec librenms lnms user:add -r admin -p Ad0cj3lasd0 admin
-	$(COMPOSE) exec librenms sh -c 'mariadb -h db -u $$MYSQL_USER -p$$MYSQL_PASSWORD -D librenms \
-      -e "insert into api_tokens (id,user_id,token_hash,description,disabled) VALUES (1,1,\"$$LIBRENMS_TOKEN\",\"\",0);"'
+	$(COMPOSE) exec librenms sh -c 'DB="mariadb -h db -u $$MYSQL_USER -p$$MYSQL_PASSWORD -D librenms"; \
+      if [ -n "$$($$DB -N -e "SHOW TABLES LIKE \"api_tokens\";")" ]; then \
+        $$DB -e "INSERT INTO api_tokens (id,user_id,token_hash,description,disabled) VALUES (1,1,\"$$LIBRENMS_TOKEN\",\"\",0);"; \
+      else \
+        $$DB -e "INSERT INTO personal_access_tokens (tokenable_type,tokenable_id,name,token,abilities,created_at,updated_at) \
+          VALUES (CONCAT(\"App\",CHAR(92),\"Models\",CHAR(92),\"User\"),1,\"ci\",SHA2(\"$$LIBRENMS_TOKEN\",256),JSON_ARRAY(\"*\"),NOW(),NOW());"; \
+      fi'
 
 .env:
 	@if [ ! -f "${PWD}/${DEVELOP_DIR}/.env" ]; then \
