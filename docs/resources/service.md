@@ -50,6 +50,8 @@ resource "librenms_service" "my_device_cert_expiration" {
 
 Import is supported using the following syntax:
 
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
 ```shell
 # Services can be imported by specifying their numeric identifier.
 terraform import librenms_service.example 123
