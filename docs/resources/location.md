@@ -44,6 +44,8 @@ resource "librenms_location" "test_location" {
 
 Import is supported using the following syntax:
 
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
 ```shell
 # Locations can be imported by specifying their numeric identifier.
 terraform import librenms_location.example 123
