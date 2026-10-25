@@ -6,13 +6,26 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      # Check for updates to Go modules every weekday
-      interval: "daily"
+      interval: "weekly"
+    # combine weekly go.mod updates into single PR
+    groups:
+      all-go-updates:
+        patterns:
+          - "*"
   - package-ecosystem: "gomod"
     directory: "/tools"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    # combine weekly go.mod updates into single PR
+    groups:
+      all-go-updates:
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    groups:
+      action-updates:
+        patterns:
+          - "*"
